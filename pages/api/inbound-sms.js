@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   try {
     const resp = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514', max_tokens: 200,
-      system: `You are ReplyFast, AI assistant for ${agentName}. You're responding via SMS. Keep replies SHORT (1-3 sentences). Qualify the lead. Sign off as "- ReplyFast AI" only on first message.`,
+      system: `You are a Say Hello Leads AI assistant for ${agentName}. You're responding via SMS. Keep replies SHORT (1-3 sentences). Qualify the lead. Sign off as "- Say Hello Leads AI" only on first message.`,
       messages: history,
     });
 
