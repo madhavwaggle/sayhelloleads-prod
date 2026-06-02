@@ -49,6 +49,9 @@ export default function App() {
   const [profile, setProfile] = useState({ name: '', agencyName: '', notifyEmail: '', phone: '' });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
+  const [twilioPhone, setTwilioPhone] = useState('');
+  const [twilioSaving, setTwilioSaving] = useState(false);
+  const [twilioMsg, setTwilioMsg] = useState('');
   const chatRef = useRef(null);
 
   // Demo form state
@@ -88,6 +91,17 @@ export default function App() {
         });
       }
     } catch (e) { console.error('loadProfile error:', e); }
+  }
+
+  async function saveTwilioPhone() {
+    setTwilioSaving(true); setTwilioMsg('');
+    try {
+      const res = await fetch('/api/phone-route', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: twilioPhone.trim() || null }) });
+      const data = await res.json();
+      setTwilioMsg(res.ok ? '✓ Number saved' : (data.error || 'Save failed'));
+    } catch { setTwilioMsg('Save failed'); }
+    setTwilioSaving(false);
+    setTimeout(() => setTwilioMsg(''), 3000);
   }
 
   async function saveProfile() {
@@ -163,7 +177,7 @@ export default function App() {
     setView('conversation');
     setSubmitting(true);
 
-    const systemPrompt = buildSystemPrompt(fname, lname, email, phone, propText, source, msgText);
+    const systemPrompt = buildSystemPrompt(fname, lname, email, phone, propText, source, msgText, session?.user?.name);
     setIsTyping(true);
 
     try {
@@ -605,7 +619,23 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
               </div>
             </div>
           </div>
-          {/* REST OF SETUP BELOW */}
+          {/* TWILIO ROUTING CARD */}
+          <div style={{ marginBottom: '2.5rem' }}>
+            <div className="section-label">SMS routing</div>
+            <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.75rem' }}>
+              <p style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '1rem', lineHeight: '1.6' }}>Assign a Twilio phone number to your account. Leads who text this number go to your dashboard only.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '.75rem', alignItems: 'flex-end' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>Your Twilio number</label>
+                  <input className="setup-input" value={twilioPhone} onChange={e => setTwilioPhone(e.target.value)} placeholder="+15131110001" />
+                </div>
+                <button className="btn-primary" onClick={saveTwilioPhone} disabled={twilioSaving} style={{ opacity: twilioSaving ? .7 : 1, whiteSpace: 'nowrap' }}>{twilioSaving ? 'Saving…' : 'Save number'}</button>
+              </div>
+              {twilioMsg && <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '500', marginTop: '.75rem' }}>{twilioMsg}</div>}
+              {twilioPhone && <div style={{ marginTop: '1rem', background: 'var(--sage-light)', borderRadius: '8px', padding: '.75rem 1rem', fontSize: '13px', color: 'var(--sage)' }}>✓ Leads texting <strong>{twilioPhone}</strong> route to your dashboard.</div>}
+            </div>
+          </div>
+
           <a className="back-link" onClick={() => setView('landing')}>← Back</a>
           <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: '2rem', marginBottom: '.5rem' }}>Integration Setup Guide</h2>
           <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '2.5rem' }}>Follow these steps to deploy ReplyFast with real SMS, email, and lead persistence.</p>
@@ -624,8 +654,8 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
 
 // ─── SYSTEM PROMPT BUILDER ────────────────────────────────────────────────────
 
-function buildSystemPrompt(fname, lname, email, phone, property, source, message) {
-  return `You are ReplyFast, an AI real estate lead assistant. A new lead just came in.
+function buildSystemPrompt(fname, lname, email, phone, property, source, message, agentName) {
+  return `You are ReplyFast, an AI real estate lead assistant working on behalf of ${agentName || 'your agent'}. A new lead just came in.
 
 Lead: ${fname} ${lname} | Email: ${email} | Phone: ${phone || 'not provided'} | Property: ${property} | Source: ${source}
 Their message: "${message}"
@@ -845,6 +875,10 @@ const GLOBAL_CSS = `
   .action-btn:hover { border-color:var(--sage-mid); color:var(--sage); }
   .action-btn.green { background:var(--sage); color:#fff; border-color:var(--sage); }
   .action-btn.green:hover { background:#3d5836; }
+  .action-btn.red { background:#fde8e8; color:var(--red); border-color:#f5c6c6; }
+  .action-btn.red:hover { background:#f5c6c6; }
+  .setup-input { width:100%; padding:.6rem .85rem; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:'DM Sans',sans-serif; background:var(--white); color:var(--black); outline:none; transition:border-color .2s; }
+  .setup-input:focus { border-color:var(--sage-mid); box-shadow:0 0 0 3px rgba(74,103,65,.1); }
   .detail-convo { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:1rem; max-height:260px; overflow-y:auto; }
   .mini-msg { font-size:13px; padding:.5rem .75rem; border-radius:10px; margin-bottom:.5rem; line-height:1.5; }
   .mini-msg.ai { background:var(--sage-light); color:var(--black); }
