@@ -53,6 +53,8 @@ export default function App() {
   const [twilioSaving, setTwilioSaving] = useState(false);
   const [twilioMsg, setTwilioMsg] = useState('');
   const chatRef = useRef(null);
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef(null);
 
   // Demo form state
   const [form, setForm] = useState({
@@ -71,6 +73,17 @@ export default function App() {
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [chatMessages, isTyping]);
+
+  // Close avatar dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target)) {
+        setAvatarOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load leads whenever dashboard is shown
   useEffect(() => {
@@ -326,13 +339,40 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
         <div className="logo">Say Hello <span>Leads</span></div>
         <div className="nav-links">
           <a onClick={() => setView('landing')}>Home</a>
-          {session && <a onClick={() => setView('demo')}>Agent Demo</a>}
           {session && <a onClick={() => setView('dashboard')}>Dashboard</a>}
-          {session && <a onClick={() => setView('setup')}>Setup</a>}
           {session ? (
-            <div className="nav-user">
-              <span className="nav-email">{session.user?.name || session.user?.email}</span>
-              <button className="btn-outline" onClick={() => signOut({ callbackUrl: '/' })}>Sign out</button>
+            <div className="nav-avatar-wrap" ref={avatarRef}>
+              <button
+                className="avatar-btn"
+                onClick={() => setAvatarOpen(o => !o)}
+                aria-label="Account menu"
+              >
+                <div className="avatar-circle">
+                  {(session.user?.name || session.user?.email || '?').charAt(0).toUpperCase()}
+                </div>
+              </button>
+              {avatarOpen && (
+                <div className="avatar-dropdown">
+                  <div className="avatar-header">
+                    <div className="avatar-circle lg">{(session.user?.name || session.user?.email || '?').charAt(0).toUpperCase()}</div>
+                    <div>
+                      <div className="avatar-name">{session.user?.name || 'Agent'}</div>
+                      <div className="avatar-email">{session.user?.email}</div>
+                    </div>
+                  </div>
+                  <div className="avatar-menu">
+                    <button className="avatar-item" onClick={() => { setView('setup'); setAvatarOpen(false); }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M12 2a10 10 0 0 1 7.07 2.93M4.93 4.93a10 10 0 0 0 0 14.14M12 22a10 10 0 0 1-7.07-2.93"/></svg>
+                      Setup &amp; integrations
+                    </button>
+                    <div className="avatar-divider" />
+                    <button className="avatar-item danger" onClick={() => { setAvatarOpen(false); signOut({ callbackUrl: '/' }); }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <a href="/login" style={{ background: 'var(--sage)', color: '#fff', padding: '.45rem 1.1rem', borderRadius: '8px', fontSize: '14px', fontWeight: '500', textDecoration: 'none' }}>Sign in</a>
@@ -755,8 +795,22 @@ const GLOBAL_CSS = `
   .nav-links { display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap; }
   .nav-links a { color:var(--muted); text-decoration:none; font-size:14px; cursor:pointer; transition:color .2s; }
   .nav-links a:hover { color:var(--black); }
-  .nav-user { display:flex; align-items:center; gap:.75rem; }
-  .nav-email { font-size:13px; color:var(--muted); }
+  .nav-avatar-wrap { position:relative; }
+  .avatar-btn { background:none; border:none; padding:0; cursor:pointer; display:flex; align-items:center; }
+  .avatar-circle { width:34px; height:34px; border-radius:50%; background:var(--sage); color:#fff; font-size:14px; font-weight:600; display:flex; align-items:center; justify-content:center; transition:opacity .15s; font-family:'Instrument Serif',serif; }
+  .avatar-circle.lg { width:40px; height:40px; font-size:16px; flex-shrink:0; }
+  .avatar-btn:hover .avatar-circle { opacity:.85; }
+  .avatar-dropdown { position:absolute; top:calc(100% + 10px); right:0; background:#fff; border:1.5px solid var(--border); border-radius:14px; min-width:220px; box-shadow:0 8px 24px rgba(0,0,0,.1); z-index:100; overflow:hidden; animation:fadeIn .12s ease; }
+  .avatar-header { display:flex; align-items:center; gap:.75rem; padding:1rem 1rem .75rem; border-bottom:1px solid var(--border); }
+  .avatar-name { font-size:14px; font-weight:600; color:var(--black); line-height:1.3; }
+  .avatar-email { font-size:12px; color:var(--muted); }
+  .avatar-menu { padding:.4rem; }
+  .avatar-item { display:flex; align-items:center; gap:.6rem; width:100%; background:none; border:none; padding:.6rem .75rem; border-radius:8px; font-size:14px; font-family:'DM Sans',sans-serif; color:var(--black); cursor:pointer; text-align:left; transition:background .12s; }
+  .avatar-item:hover { background:var(--bg); }
+  .avatar-item.danger { color:#dc2626; }
+  .avatar-item.danger:hover { background:#fef2f2; }
+  .avatar-item svg { flex-shrink:0; opacity:.6; }
+  .avatar-divider { height:1px; background:var(--border); margin:.3rem .4rem; }
 
   .btn-primary { background:var(--sage); color:#fff; border:none; border-radius:var(--radius); padding:.55rem 1.25rem; font-size:14px; font-family:'DM Sans',sans-serif; font-weight:500; cursor:pointer; transition:background .2s; }
   .btn-primary:hover { background:#3d5836; }
