@@ -46,6 +46,9 @@ export default function App() {
   const [openDetailId, setOpenDetailId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [scoring, setScoring] = useState(false);
+  const [profile, setProfile] = useState({ name: '', agencyName: '', notifyEmail: '', phone: '' });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
   const chatRef = useRef(null);
 
   // Demo form state
@@ -69,7 +72,39 @@ export default function App() {
   // Load leads whenever dashboard is shown
   useEffect(() => {
     if (view === 'dashboard') loadLeads();
+    if (view === 'setup') loadProfile();
   }, [view]);
+
+  async function loadProfile() {
+    try {
+      const res = await fetch('/api/profile');
+      if (res.ok) {
+        const data = await res.json();
+        setProfile({
+          name: data.profile.name || '',
+          agencyName: data.profile.agencyName || '',
+          notifyEmail: data.profile.notifyEmail || data.profile.email || '',
+          phone: data.profile.phone || '',
+        });
+      }
+    } catch (e) { console.error('loadProfile error:', e); }
+  }
+
+  async function saveProfile() {
+    setProfileSaving(true);
+    setProfileMsg('');
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      });
+      if (res.ok) setProfileMsg('✓ Profile saved');
+      else setProfileMsg('Save failed — try again');
+    } catch { setProfileMsg('Save failed — try again'); }
+    setProfileSaving(false);
+    setTimeout(() => setProfileMsg(''), 3000);
+  }
 
   async function loadLeads() {
     try {
@@ -90,6 +125,15 @@ export default function App() {
   useEffect(() => {
     if (view === 'dashboard') loadLeads();
   }, [filter]);
+
+  async function deleteLead(leadId) {
+    if (!confirm('Delete this lead? This cannot be undone.')) return;
+    try {
+      await fetch(`/api/leads/${leadId}`, { method: 'DELETE' });
+      setLeads(prev => prev.filter(l => l.id !== leadId));
+      setOpenDetailId(null);
+    } catch (e) { alert('Delete failed — try again'); }
+  }
 
   async function submitLead() {
     const fname = form.fname || 'Alex';
@@ -504,6 +548,7 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
                             alert(res.ok ? `SMS sent to ${lead.phone}!` : 'SMS failed — check Twilio setup.');
                           }}>📱 Send SMS</button>
                         )}
+                        <button className="action-btn red" onClick={() => deleteLead(lead.id)}>🗑 Delete</button>
                       </div>
                       <div style={{ fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted)', marginBottom: '.5rem' }}>
                         Conversation ({lead.messages?.length || 0} messages)
@@ -528,6 +573,39 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
       {/* SETUP */}
       {view === 'setup' && (
         <section className="fade-in" style={{ maxWidth: '700px', margin: '3rem auto', padding: '0 1.5rem 5rem' }}>
+          {/* PROFILE CARD */}
+          <div style={{ marginBottom: '2.5rem' }}>
+            <div className="section-label">Your profile</div>
+            <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.75rem' }}>
+              <div className="field-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>Full name</label>
+                  <input className="setup-input" value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} placeholder="Maria Chen" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>Agency name</label>
+                  <input className="setup-input" value={profile.agencyName} onChange={e => setProfile(p => ({ ...p, agencyName: e.target.value }))} placeholder="Hyde Park Realty" />
+                </div>
+              </div>
+              <div className="field-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>Notification email <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(where to send lead alerts)</span></label>
+                  <input className="setup-input" type="email" value={profile.notifyEmail} onChange={e => setProfile(p => ({ ...p, notifyEmail: e.target.value }))} placeholder="you@yourrealty.com" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>Your phone <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
+                  <input className="setup-input" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} placeholder="(513) 555-0100" />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button className="btn-primary" onClick={saveProfile} disabled={profileSaving} style={{ opacity: profileSaving ? .7 : 1 }}>
+                  {profileSaving ? 'Saving…' : 'Save profile'}
+                </button>
+                {profileMsg && <span style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '500' }}>{profileMsg}</span>}
+              </div>
+            </div>
+          </div>
+          {/* REST OF SETUP BELOW */}
           <a className="back-link" onClick={() => setView('landing')}>← Back</a>
           <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: '2rem', marginBottom: '.5rem' }}>Integration Setup Guide</h2>
           <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '2.5rem' }}>Follow these steps to deploy ReplyFast with real SMS, email, and lead persistence.</p>
