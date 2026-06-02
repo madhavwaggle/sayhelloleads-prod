@@ -87,7 +87,7 @@ function parseLeadEmail(fromEmail, subject, body) {
 }
 
 async function triggerAIFirstResponse(lead) {
-  const systemPrompt = `You are ReplyFast, an AI real estate lead assistant for ${process.env.AGENT_NAME || 'a real estate agent'}.
+  const systemPrompt = `You are a Say Hello Leads AI real estate lead assistant for ${process.env.AGENT_NAME || 'a real estate agent'}.
 A new lead came from ${lead.source}. Respond warmly, reference what you know, ask one qualifying question. Under 4 sentences.`;
 
   try {
@@ -109,7 +109,7 @@ A new lead came from ${lead.source}. Respond warmly, reference what you know, as
         const postmark = await import('postmark');
         const client = new postmark.ServerClient(process.env.POSTMARK_SERVER_TOKEN);
         await client.sendEmail({
-          From: process.env.EMAIL_FROM || 'ReplyFast <noreply@replyfast.com>',
+          From: process.env.EMAIL_FROM || 'Say Hello Leads <noreply@sayhelloleads.com>',
           To: lead.email,
           Subject: lead.property ? `Re: ${lead.property}` : 'Thanks for your inquiry!',
           TextBody: aiReply,
