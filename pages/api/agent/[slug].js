@@ -1,59 +1,46 @@
 /**
  * pages/api/agent/[slug].js
  *
- * GET  /api/agent/:slug  → returns public agent profile (name, agency)
- * POST /api/agent/:slug  → submits a buyer inquiry as a lead for that agent
+ * GET  /api/agent/:slug  → public agent profile
+ * POST /api/agent/:slug  → buyer inquiry → save lead → AI response + scoring
  *
- * The slug is derived from the agent's name: "Jane Smith" → "jane-smith"
- * It is stored on the user object as `slug` when the account is created
- * (or lazily generated on first lookup from their name).
+ * Key fix: triggerAIResponse is awaited with a 25s timeout BEFORE we respond,
+ * so Vercel doesn't kill the function before the AI call completes.
+ * The buyer sees a ~2-3s delay on submit which is fine for a form.
  */
 
-import { getUserByEmail } from '../../../lib/users';
 import { saveLead } from '../../../lib/db';
+import { getUserById } from '../../../lib/users';
 import { notifyAgentNewLead } from '../../../lib/notify';
-import { v4 as uuidv4 } from 'uuid';
 import { getAgentConfig } from '../../../lib/agentConfig';
+import { v4 as uuidv4 } from 'uuid';
+import Anthropic from '@anthropic-ai/sdk';
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── SLUG HELPERS ─────────────────────────────────────────────────────────────
 
-/** Convert a display name to a URL slug, e.g. "Jane Smith" → "jane-smith" */
 function nameToSlug(name) {
-  return (name || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-');
+  return (name || '').toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
 }
 
-/**
- * Find an agent by slug.
- * We scan the user index stored in Redis (or the in-memory map).
- * This keeps the lookup self-contained without adding a new Redis key pattern.
- */
 async function getAgentBySlug(slug) {
-  // Redis path
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     const { Redis } = await import('@upstash/redis');
-    const redis = new Redis({
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
-    });
+    const redis = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN });
 
-    // Check slug index first (fast path, populated on registration or profile save)
+    // Fast path: slug index
     const agentId = await redis.get(`agent:slug:${slug}`);
     if (agentId) {
       const raw = await redis.get(`user:${agentId}`);
       if (raw) return typeof raw === 'string' ? JSON.parse(raw) : raw;
     }
 
-    // Fallback: scan users:index and compute slug from name (slow path, once per new user)
+    // Slow path: scan all users once, then cache
     const ids = await redis.zrange('users:index', 0, -1);
     for (const id of ids) {
       const raw = await redis.get(`user:${id}`);
       const user = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
       if (user && nameToSlug(user.name) === slug) {
-        // Cache it for next time
         await redis.set(`agent:slug:${slug}`, id);
         return user;
       }
@@ -61,15 +48,15 @@ async function getAgentBySlug(slug) {
     return null;
   }
 
-  // In-memory fallback (local dev)
-  const { _memMap } = await import('../../../lib/users');
-  if (_memMap) {
-    for (const [key, val] of _memMap.entries()) {
-      if (key.startsWith('user:') && !key.includes(':email:')) {
-        if (nameToSlug(val?.name) === slug) return val;
+  // Local dev in-memory fallback
+  try {
+    const { _memMap } = await import('../../../lib/users');
+    if (_memMap) {
+      for (const [key, val] of _memMap.entries()) {
+        if (key.startsWith('user:') && !key.includes(':email:') && nameToSlug(val?.name) === slug) return val;
       }
     }
-  }
+  } catch {}
   return null;
 }
 
@@ -79,21 +66,14 @@ export default async function handler(req, res) {
   const { slug } = req.query;
   if (!slug) return res.status(400).json({ error: 'slug required' });
 
-  // ── GET: resolve slug → public agent profile ──────────────────────────────
+  // ── GET ──────────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
     const agent = await getAgentBySlug(slug).catch(() => null);
     if (!agent) return res.status(404).json({ error: 'Agent not found' });
-
-    // Return only public-safe fields
-    return res.status(200).json({
-      id: agent.id,
-      name: agent.name,
-      agencyName: agent.agencyName || '',
-      slug,
-    });
+    return res.status(200).json({ id: agent.id, name: agent.name, agencyName: agent.agencyName || '', slug });
   }
 
-  // ── POST: submit buyer inquiry ────────────────────────────────────────────
+  // ── POST ─────────────────────────────────────────────────────────────────
   if (req.method === 'POST') {
     const agent = await getAgentBySlug(slug).catch(() => null);
     if (!agent) return res.status(404).json({ error: 'Agent not found' });
@@ -111,7 +91,7 @@ export default async function handler(req, res) {
       phone: (phone || '').trim(),
       property: (property || 'property inquiry').trim(),
       source: source || 'Agent Page',
-      messages: [{ role: 'lead', text: message || 'Inquiry received via agent page.' }],
+      messages: [{ role: 'lead', text: message || `I'm interested in ${property || 'a property'}.` }],
       score: null,
       summary: '',
       smsSent: false,
@@ -120,10 +100,20 @@ export default async function handler(req, res) {
       updatedAt: new Date().toISOString(),
     };
 
+    // Save the lead first so it appears immediately
     await saveLead(lead);
 
-    // Trigger AI response + scoring async (don't block buyer)
-    triggerAIResponse(lead, agent).catch(console.error);
+    // Run AI + scoring with a 25s timeout — await it before responding
+    // so Vercel doesn't kill the function mid-flight
+    try {
+      await Promise.race([
+        runAI(lead, agent),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AI timeout')), 25000)),
+      ]);
+    } catch (e) {
+      // AI timed out or errored — lead is still saved, just without score
+      console.error('AI response error:', e.message);
+    }
 
     return res.status(200).json({ id, message: 'Inquiry sent!' });
   }
@@ -131,88 +121,102 @@ export default async function handler(req, res) {
   return res.status(405).end();
 }
 
-// ─── AI RESPONSE TRIGGER ─────────────────────────────────────────────────────
+// ─── AI RESPONSE + SCORING ───────────────────────────────────────────────────
 
-async function triggerAIResponse(lead, agent) {
+async function runAI(lead, agent) {
   const cfg = await getAgentConfig(agent?.id || lead.agentId);
-  const agentName = agent?.name || 'your agent';
-  const agencyName = agent?.agencyName || '';
-  if (!cfg.anthropicKey) { console.warn('No Anthropic key for agent', lead.agentId); return; }
-  const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const anthropic = new Anthropic({ apiKey: cfg.anthropicKey });
+  if (!cfg.anthropicKey) {
+    console.warn('No Anthropic API key configured — skipping AI response for lead', lead.id);
+    // Still set a default score so lead shows up correctly in dashboard
+    lead.score = 'WARM';
+    lead.summary = `${lead.fname} inquired about ${lead.property}. Follow up to schedule a showing.`;
+    await saveLead(lead);
+    return;
+  }
 
-  const systemPrompt = `You are a Say Hello Leads AI real estate assistant responding on behalf of ${agentName}${agencyName ? ` at ${agencyName}` : ''}.
+  const agentName   = agent?.name || 'your agent';
+  const agencyName  = agent?.agencyName || '';
+  const anthropic   = new Anthropic({ apiKey: cfg.anthropicKey });
+  const leadMessage = lead.messages[0]?.text || `I'm interested in ${lead.property}.`;
 
-A buyer just submitted an inquiry. Respond warmly and personally — reference the property by name if given. Ask ONE qualifying question (timeline, budget, or pre-approval status). Keep it under 4 sentences. Sign off as "${agentName} (via Say Hello Leads)".`;
+  // ── 1. AI reply ───────────────────────────────────────────────────────────
+  const replyResp = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 300,
+    system: `You are a Say Hello Leads AI real estate assistant responding on behalf of ${agentName}${agencyName ? ` at ${agencyName}` : ''}.
+A buyer just submitted an inquiry. Respond warmly, reference the property by name. Ask ONE qualifying question (timeline, budget, or pre-approval). Keep it under 4 sentences. Sign off as "${agentName} (via Say Hello Leads)".`,
+    messages: [{ role: 'user', content: leadMessage }],
+  });
 
-  try {
-    const resp = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 300,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: lead.messages[0].text || `I'm interested in ${lead.property}.` }],
-    });
-
-    const aiReply = resp.content?.[0]?.text || '';
-    if (!aiReply) return;
-
+  const aiReply = replyResp.content?.[0]?.text?.trim() || '';
+  if (aiReply) {
     lead.messages.push({ role: 'ai', text: aiReply });
     lead.updatedAt = new Date().toISOString();
+  }
 
-    // Score
-    const scoreResp = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 150,
-      system: 'You are a lead scoring assistant. Respond ONLY with valid JSON, no markdown.',
-      messages: [{
-        role: 'user',
-        content: `Score this real estate lead. HOT=ready <30 days with budget. WARM=interested but vague. COLD=just browsing.\n\nLead: ${lead.fname} ${lead.lname}\nMessage: ${lead.messages[0].text}\nProperty: ${lead.property}\n\nRespond: {"score":"HOT","summary":"2-sentence agent briefing."}`,
-      }],
-    });
+  // ── 2. Score + brief ──────────────────────────────────────────────────────
+  const scoreResp = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 150,
+    system: 'Real estate lead scoring. Respond ONLY with valid JSON, no markdown fences.',
+    messages: [{
+      role: 'user',
+      content: `Score this lead. HOT = ready to buy within 30 days + has budget. WARM = interested but timeline/budget vague. COLD = just browsing.
 
+Lead: ${lead.fname} ${lead.lname}
+Property: ${lead.property}
+Message: "${leadMessage}"
+
+Respond exactly: {"score":"HOT","summary":"2 sentence brief for the agent."}`,
+    }],
+  });
+
+  try {
+    const raw = scoreResp.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}';
+    const parsed = JSON.parse(raw);
+    lead.score   = ['HOT','WARM','COLD'].includes(parsed.score) ? parsed.score : 'WARM';
+    lead.summary = parsed.summary || `${lead.fname} inquired about ${lead.property}. Follow up to schedule a showing.`;
+  } catch {
+    lead.score   = 'WARM';
+    lead.summary = `${lead.fname} inquired about ${lead.property}. Follow up to schedule a showing.`;
+  }
+
+  // ── 3. Save with score + AI reply ─────────────────────────────────────────
+  await saveLead(lead);
+
+  // ── 4. SMS lead if Twilio connected ───────────────────────────────────────
+  if (aiReply && lead.phone && cfg.twilioSid && cfg.twilioPhone) {
     try {
-      const parsed = JSON.parse(scoreResp.content?.[0]?.text?.replace(/```json|```/g, '').trim());
-      lead.score = parsed.score || 'WARM';
-      lead.summary = parsed.summary || '';
-    } catch {
-      lead.score = 'WARM';
-      lead.summary = `${lead.fname} inquired about ${lead.property}. Follow up to schedule a showing.`;
-    }
+      const twilio = (await import('twilio')).default;
+      await twilio(cfg.twilioSid, cfg.twilioToken).messages.create({
+        to: lead.phone, from: cfg.twilioPhone, body: aiReply.slice(0, 1600),
+      });
+      lead.smsSent = true;
+      await saveLead(lead);
+    } catch (e) { console.error('SMS error:', e.message); }
+  }
 
-    await saveLead(lead);
+  // ── 5. Email buyer if Postmark connected ──────────────────────────────────
+  if (aiReply && lead.email && cfg.postmarkToken) {
+    try {
+      const { ServerClient } = await import('postmark');
+      await new ServerClient(cfg.postmarkToken).sendEmail({
+        From:     cfg.emailFrom || `${agentName} via Say Hello Leads <noreply@sayhelloleads.com>`,
+        To:       lead.email,
+        Subject:  `Re: ${lead.property}`,
+        TextBody: aiReply,
+        HtmlBody: `<div style="font-family:sans-serif;max-width:600px;padding:1.5rem;line-height:1.6;">${aiReply.replace(/\n/g, '<br>')}</div>`,
+      });
+    } catch (e) { console.error('Postmark error:', e.message); }
+  }
 
-    // SMS the lead if Twilio configured
-    if (lead.phone && cfg.twilioSid) {
-      try {
-        const twilio = (await import('twilio')).default;
-        const client = twilio(cfg.twilioSid, cfg.twilioToken);
-        await client.messages.create({ to: lead.phone, from: cfg.twilioPhone, body: aiReply.slice(0, 1600) });
-        lead.smsSent = true;
-        await saveLead(lead);
-      } catch (e) { console.error('SMS error:', e); }
-    }
-
-    // Email the buyer if Postmark configured
-    if (lead.email && cfg.postmarkToken) {
-      try {
-        const postmark = await import('postmark');
-        const client = new postmark.ServerClient(cfg.postmarkToken);
-        await client.sendEmail({
-          From: cfg.emailFrom || `${agentName} via Say Hello Leads <noreply@sayhelloleads.com>`,
-          To: lead.email,
-          Subject: `Re: ${lead.property}`,
-          TextBody: aiReply,
-          HtmlBody: `<div style="font-family:sans-serif;max-width:600px;padding:1.5rem;">${aiReply.replace(/\n/g, '<br>')}</div>`,
-        });
-      } catch (e) { console.error('Email error:', e); }
-    }
-
-    // Notify the agent
-    const agentEmail = agent?.notifyEmail || agent?.email;
-    if (agentEmail) {
-      await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey).catch(console.error);
-    }
-  } catch (e) {
-    console.error('AI trigger error:', e);
+  // ── 6. Notify agent via Resend ────────────────────────────────────────────
+  const agentEmail = agent?.notifyEmail || agent?.email;
+  if (agentEmail) {
+    await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey).catch(e => console.error('Notify error:', e.message));
   }
 }
+
+export const config = {
+  maxDuration: 30, // Tell Vercel this function can run up to 30s
+};
