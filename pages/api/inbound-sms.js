@@ -9,6 +9,7 @@
 import { saveLead, getLead, getAllLeads } from '../../lib/db';
 import { getUserById } from '../../lib/users';
 import { getAgentConfig } from '../../lib/agentConfig';
+import { notifyAgentNewLead } from '../../lib/notify';
 import { v4 as uuidv4 } from 'uuid';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -69,7 +70,35 @@ export default async function handler(req, res) {
     if (!lead.score) lead.score = 'WARM';
     if (!lead.summary) lead.summary = `${lead.fname} texted about ${lead.property}. Follow up needed.`;
 
+    // Score the lead properly via AI (only on first message)
+    const isNew = lead.messages.filter(m => m.role === 'lead').length === 1;
+    if (isNew) {
+      try {
+        const scoreResp = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514', max_tokens: 150,
+          system: 'Real estate lead scoring. Respond ONLY with valid JSON, no markdown fences.',
+          messages: [{ role: 'user', content: `Score this lead. HOT=ready <30 days+budget. WARM=interested. COLD=browsing.\nLead phone: ${lead.phone}\nMessage: "${Body}"\nRespond: {"score":"HOT","summary":"2-sentence agent briefing."}` }],
+        });
+        const raw = scoreResp.content?.[0]?.text?.replace(/\`\`\`json|\`\`\`/g,'').trim() || '{}';
+        const parsed = JSON.parse(raw);
+        lead.score   = ['HOT','WARM','COLD'].includes(parsed.score) ? parsed.score : 'WARM';
+        lead.summary = parsed.summary || `${lead.fname} texted about ${lead.property}. Follow up needed.`;
+      } catch {
+        lead.score   = 'WARM';
+        lead.summary = `SMS lead texted about ${lead.property}. Follow up needed.`;
+      }
+    }
+
     await saveLead(lead);
+
+    // Notify agent after scoring so email shows correct score
+    if (isNew) {
+      const agentEmail = agent?.notifyEmail || agent?.email;
+      if (agentEmail) {
+        await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey)
+          .catch(e => console.error('SMS notify error:', e.message));
+      }
+    }
 
     // Reply via Twilio TwiML
     res.setHeader('Content-Type', 'text/xml');
