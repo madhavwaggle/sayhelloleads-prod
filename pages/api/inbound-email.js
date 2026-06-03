@@ -49,8 +49,21 @@ export default async function handler(req, res) {
 
   await saveLead(lead);
 
-  // AI response + scoring async
-  triggerAIResponse(lead, agent, cfg).catch(console.error);
+  // Await AI + scoring so notification includes score (25s timeout)
+  try {
+    await Promise.race([
+      triggerAIResponse(lead, agent, cfg),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 25000)),
+    ]);
+  } catch (e) { console.error('inbound-email AI error:', e.message); }
+
+  // Notify agent — fires after scoring so email shows HOT/WARM/COLD
+  const agentEmail = agent?.notifyEmail || agent?.email;
+  if (agentEmail) {
+    const agentName = agent?.name || 'your agent';
+    await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey)
+      .catch(e => console.error('inbound-email notify error:', e.message));
+  }
 
   return res.status(200).json({ id: lead.id, message: 'Lead captured' });
 }
