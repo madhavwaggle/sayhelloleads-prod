@@ -52,6 +52,13 @@ export default function App() {
   const [twilioPhone, setTwilioPhone] = useState('');
   const [twilioSaving, setTwilioSaving] = useState(false);
   const [twilioMsg, setTwilioMsg] = useState('');
+  // Integration credentials
+  const [creds, setCreds]           = useState({});
+  const [credsLoaded, setCredsLoaded] = useState(false);
+  const [credsSaving, setCredsSaving] = useState({});
+  const [credsMsg, setCredsMsg]     = useState({});
+  // Onboarding checklist
+  const [checklist, setChecklist]   = useState({ profile: false, anthropic: false, email: false, sms: false });
   const chatRef = useRef(null);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef(null);
@@ -112,6 +119,8 @@ export default function App() {
   useEffect(() => {
     if (view === 'dashboard') loadLeads();
     if (['setup','profile'].includes(view)) loadProfile();
+    if (view === 'integrations') loadCreds();
+    if (view === 'dashboard') loadChecklist();
   }, [view]);
 
   async function loadProfile() {
@@ -154,6 +163,56 @@ export default function App() {
     } catch { setProfileMsg('Save failed — try again'); }
     setProfileSaving(false);
     setTimeout(() => setProfileMsg(''), 3000);
+  }
+
+  async function loadCreds() {
+    try {
+      const res = await fetch('/api/credentials');
+      if (res.ok) {
+        const data = await res.json();
+        setCreds(data.credentials || {});
+        setCredsLoaded(true);
+      }
+    } catch (e) { console.error('loadCreds error:', e); }
+  }
+
+  async function saveCred(field, value) {
+    setCredsSaving(s => ({ ...s, [field]: true }));
+    setCredsMsg(m => ({ ...m, [field]: '' }));
+    try {
+      const res = await fetch('/api/credentials', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      const ok = res.ok;
+      setCredsMsg(m => ({ ...m, [field]: ok ? '✓ Saved' : 'Save failed' }));
+      if (ok) {
+        setCreds(c => ({ ...c, [field]: { isSet: !!value, masked: value ? value.slice(0,4)+'••••••••'+value.slice(-3) : '' } }));
+        loadChecklist();
+      }
+    } catch { setCredsMsg(m => ({ ...m, [field]: 'Save failed' })); }
+    setCredsSaving(s => ({ ...s, [field]: false }));
+    setTimeout(() => setCredsMsg(m => ({ ...m, [field]: '' })), 3000);
+  }
+
+  async function loadChecklist() {
+    try {
+      const [profRes, credsRes] = await Promise.all([
+        fetch('/api/profile'),
+        fetch('/api/credentials'),
+      ]);
+      const profData  = profRes.ok  ? await profRes.json()  : {};
+      const credsData = credsRes.ok ? await credsRes.json() : {};
+      const p   = profData.profile || {};
+      const c   = credsData.credentials || {};
+      setChecklist({
+        profile:   !!(p.name && p.notifyEmail),
+        anthropic: !!(c.anthropicKey?.isSet),
+        email:     !!(c.resendKey?.isSet || c.postmarkToken?.isSet),
+        sms:       !!(c.twilioSid?.isSet && c.twilioPhone?.isSet),
+      });
+    } catch (e) { console.error('loadChecklist:', e); }
   }
 
   async function loadLeads() {
@@ -572,6 +631,36 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
 
           <div className="dash-body">
 
+            {/* ONBOARDING CHECKLIST — shown until all 4 steps done */}
+            {(!checklist.profile || !checklist.anthropic || !checklist.email || !checklist.sms) && (
+              <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: '14px', padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '1rem', color: 'var(--black)' }}>
+                  🚀 Get set up — {[checklist.profile, checklist.anthropic, checklist.email, checklist.sms].filter(Boolean).length} of 4 steps done
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                  {[
+                    { done: checklist.profile,   label: 'Complete your profile',          view: 'profile',       hint: 'Name + notification email' },
+                    { done: checklist.anthropic,  label: 'Add your Anthropic API key',     view: 'integrations',  hint: 'Powers AI responses' },
+                    { done: checklist.email,      label: 'Connect email notifications',    view: 'integrations',  hint: 'Resend or Postmark' },
+                    { done: checklist.sms,        label: 'Connect Twilio SMS (optional)',  view: 'integrations',  hint: 'AI responds via text' },
+                  ].map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '.75rem', cursor: item.done ? 'default' : 'pointer' }}
+                      onClick={() => !item.done && setView(item.view)}>
+                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: item.done ? 'var(--sage)' : 'var(--border)', color: '#fff', fontSize: '11px', fontWeight: '700' }}>
+                        {item.done ? '✓' : i + 1}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '13px', fontWeight: '500', textDecoration: item.done ? 'line-through' : 'none', color: item.done ? 'var(--muted)' : 'var(--black)' }}>{item.label}</span>
+                        {!item.done && <span style={{ fontSize: '12px', color: 'var(--muted)', marginLeft: '.5rem' }}>{item.hint}</span>}
+                      </div>
+                      {!item.done && <span style={{ fontSize: '12px', color: 'var(--sage)', fontWeight: '500' }}>Set up →</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* SHAREABLE LINK BANNER */}
             {session && (() => {
               const slug = session.user?.name
@@ -749,20 +838,104 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
 
       {/* ── INTEGRATIONS VIEW ────────────────────────────────────── */}
       {view === 'integrations' && (
-        <section className="fade-in" style={{ maxWidth: '700px', margin: '3rem auto', padding: '0 1.5rem 5rem' }}>
+        <section className="fade-in" style={{ maxWidth: '720px', margin: '3rem auto', padding: '0 1.5rem 5rem' }}>
           <a className="back-link" onClick={() => setView('profile')}>← Profile</a>
-
-          <div style={{ marginBottom: '2.5rem' }}>
-            <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: '2rem', marginBottom: '.25rem' }}>Integration Setup Guide</h2>
-            <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Follow these steps to deploy Say Hello Leads with real SMS, email, and lead persistence.</p>
+          <div style={{ marginBottom: '2rem' }}>
+            <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: '2rem', marginBottom: '.25rem' }}>Integrations</h2>
+            <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Paste your API keys below. Everything is saved to your account — no Vercel env vars needed.</p>
           </div>
 
-          {SETUP_STEPS.map((s, i) => (
-            <div className="setup-step" key={i}>
-              <div className="step-header"><div className="step-num">{i + 1}</div><h3>{s.title}</h3></div>
-              <div className="step-body" dangerouslySetInnerHTML={{ __html: s.body }} />
-            </div>
-          ))}
+          {/* ── ANTHROPIC ─────────────────────────────────────────────── */}
+          <IntegCard
+            icon="🤖" title="Anthropic AI" required
+            status={creds.anthropicKey?.isSet}
+            desc="Powers all AI lead responses and scoring. Get your key at platform.anthropic.com → API Keys."
+            link="https://platform.anthropic.com/account/api-keys"
+            linkLabel="Get API key →"
+          >
+            <CredField
+              label="Anthropic API Key" field="anthropicKey" placeholder="sk-ant-..."
+              current={creds.anthropicKey} saving={credsSaving.anthropicKey} msg={credsMsg.anthropicKey}
+              onSave={saveCred}
+            />
+          </IntegCard>
+
+          {/* ── RESEND (agent notifications) ────────────────────────── */}
+          <IntegCard
+            icon="✉️" title="Resend" badge="Lead alerts"
+            status={creds.resendKey?.isSet}
+            desc="Sends you an email every time a new lead comes in. Free tier: 3,000 emails/mo. Sign up at resend.com."
+            link="https://resend.com" linkLabel="Sign up free →"
+          >
+            <CredField
+              label="Resend API Key" field="resendKey" placeholder="re_..."
+              current={creds.resendKey} saving={credsSaving.resendKey} msg={credsMsg.resendKey}
+              onSave={saveCred}
+            />
+          </IntegCard>
+
+          {/* ── TWILIO ───────────────────────────────────────────────── */}
+          <IntegCard
+            icon="📱" title="Twilio SMS" badge="Optional"
+            status={creds.twilioSid?.isSet && creds.twilioPhone?.isSet}
+            desc={<>AI responds to leads via SMS. Buy a number (~$1/mo) at twilio.com. Set your number&apos;s inbound webhook to:<br/><code style={{fontSize:'12px',background:'#f3f4f6',padding:'2px 6px',borderRadius:'4px'}}>https://www.sayhelloleads.com/api/inbound-sms</code></>}
+            link="https://console.twilio.com" linkLabel="Twilio console →"
+          >
+            <CredField
+              label="Account SID" field="twilioSid" placeholder="AC..."
+              current={creds.twilioSid} saving={credsSaving.twilioSid} msg={credsMsg.twilioSid}
+              onSave={saveCred}
+            />
+            <CredField
+              label="Auth Token" field="twilioToken" placeholder="your auth token"
+              current={creds.twilioToken} saving={credsSaving.twilioToken} msg={credsMsg.twilioToken}
+              onSave={saveCred}
+            />
+            <CredField
+              label="Your Twilio Phone Number" field="twilioPhone" placeholder="+15131234567"
+              current={creds.twilioPhone} saving={credsSaving.twilioPhone} msg={credsMsg.twilioPhone}
+              onSave={saveCred}
+            />
+          </IntegCard>
+
+          {/* ── POSTMARK ─────────────────────────────────────────────── */}
+          <IntegCard
+            icon="📧" title="Postmark" badge="Zillow / Homes.com / Realtor.com"
+            status={creds.postmarkToken?.isSet}
+            desc={<>Receives forwarded lead emails from Zillow, Homes.com, and Realtor.com. Set your Postmark inbound webhook to:<br/><code style={{fontSize:'12px',background:'#f3f4f6',padding:'2px 6px',borderRadius:'4px'}}>https://www.sayhelloleads.com/api/inbound-email</code><br/><br/>Then in Zillow Premier Agent → Settings → Lead notifications, forward emails to your unique Postmark inbound address shown after you add your token.</>}
+            link="https://postmarkapp.com" linkLabel="Sign up →"
+          >
+            <CredField
+              label="Postmark Server Token" field="postmarkToken" placeholder="your-server-token"
+              current={creds.postmarkToken} saving={credsSaving.postmarkToken} msg={credsMsg.postmarkToken}
+              onSave={saveCred}
+            />
+            <CredField
+              label="From email (optional)" field="emailFrom" placeholder="Jane Smith <jane@yourrealty.com>"
+              current={creds.emailFrom} saving={credsSaving.emailFrom} msg={credsMsg.emailFrom}
+              onSave={saveCred}
+            />
+            {creds.postmarkToken?.isSet && session?.user?.id && (
+              <div style={{ marginTop: '.75rem', background: 'var(--sage-light)', borderRadius: '8px', padding: '.75rem 1rem', fontSize: '13px' }}>
+                <strong>Your inbound address:</strong>{' '}
+                <code style={{ fontSize: '12px' }}>{session.user.id}@inbound.postmarkapp.com</code>
+                <div style={{ color: 'var(--muted)', marginTop: '.3rem' }}>Forward your Zillow / Homes.com lead notification emails to this address.</div>
+              </div>
+            )}
+          </IntegCard>
+
+          {/* ── ZAPIER WEBHOOK ───────────────────────────────────────── */}
+          <IntegCard
+            icon="⚡" title="Zapier / Webhook" badge="Any source"
+            desc={<>Connect any lead source via Zapier or a direct POST. Use your unique webhook URL below. Optionally protect it with a secret.<br/><br/><code style={{fontSize:'12px',background:'#f3f4f6',padding:'2px 6px',borderRadius:'4px',wordBreak:'break-all'}}>POST https://www.sayhelloleads.com/api/new-lead</code><br/><code style={{fontSize:'12px',background:'#f3f4f6',padding:'2px 6px',borderRadius:'4px',marginTop:'4px',display:'inline-block'}}>x-agent-id: {session?.user?.id || 'your-agent-id'}</code></>}
+            link="https://zapier.com" linkLabel="Open Zapier →"
+          >
+            <CredField
+              label="Webhook secret (optional)" field="webhookSecret" placeholder="any random string"
+              current={creds.webhookSecret} saving={credsSaving.webhookSecret} msg={credsMsg.webhookSecret}
+              onSave={saveCred}
+            />
+          </IntegCard>
         </section>
       )}
     </>
