@@ -202,7 +202,7 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: '1.75rem', marginBottom: '.5rem' }}>
-            Reply<span style={{ color: 'var(--sage)' }}>Fast</span>
+            Say<span style={{ color: 'var(--sage)' }}>HelloLeads</span>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Sign in to your agent dashboard</p>
         </div>
