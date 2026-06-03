@@ -495,9 +495,9 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
             <div className="section-title">You work hard to get leads.<br />Then life gets in the way.</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
               {[
-                ['😰', "You're showing a home when a Zillow lead texts in.", "They don't hear back for 6 hours. They've already booked with someone else."],
-                ['😤', "You follow up once. They don't reply.", "44% of agents give up after one contact. It takes 5+ to close."],
-                ['😓', "You pay $500/mo for Zillow leads.", "Almost half are never contacted. That's money straight in the trash."],
+                ["You're showing a home when a Zillow lead texts in.", "They don't hear back for 6 hours. They've already booked with someone else."],
+                ["You follow up once. They don't reply.", "44% of agents give up after one contact. It takes 5+ to close."],
+                ["You pay $500/mo for Zillow leads.", "Almost half are never contacted. That's money straight in the trash."],
               ].map(([emoji, prob, pain]) => (
                 <div key={prob} style={{ background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem' }}>
                   <div style={{ fontSize: '1.5rem', marginBottom: '.75rem' }}>{emoji}</div>
