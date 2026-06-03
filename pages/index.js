@@ -418,7 +418,7 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
 
       {/* NAV */}
       <nav>
-        <div className="logo">Say Hello <span>Leads</span></div>
+        <div className="logo">Say Hello<span>Leads</span></div>
         <div className="nav-links">
           <a onClick={() => setView('landing')}>Home</a>
           {session && <a onClick={() => setView('dashboard')}>Dashboard</a>}
