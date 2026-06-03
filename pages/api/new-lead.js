@@ -62,9 +62,9 @@ export async function triggerAIResponse(lead, agent, cfg) {
   const agencyName = agent?.agencyName || '';
   const anthropic = new Anthropic({ apiKey: cfg.anthropicKey });
 
-  const systemPrompt = `You are a Say Hello Leads AI real estate lead assistant working on behalf of ${agentName}${agencyName ? ` at ${agencyName}` : ''}.
+  const systemPrompt = `You are a Say HelloLeads AI real estate lead assistant working on behalf of ${agentName}${agencyName ? ` at ${agencyName}` : ''}.
 Lead: ${lead.fname} ${lead.lname} | Email: ${lead.email} | Phone: ${lead.phone || 'not provided'} | Property: ${lead.property} | Source: ${lead.source}
-Respond warmly, reference the property, ask one qualifying question (timeline, budget, or pre-approval). Under 4 sentences. Sign off as "Say Hello Leads AI, on behalf of ${agentName}".`;
+Respond warmly, reference the property, ask one qualifying question (timeline, budget, or pre-approval). Under 4 sentences. Sign off as "Say HelloLeads AI, on behalf of ${agentName}".`;
 
   try {
     const resp = await anthropic.messages.create({
