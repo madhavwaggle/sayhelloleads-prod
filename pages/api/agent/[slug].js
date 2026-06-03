@@ -13,6 +13,7 @@ import { saveLead } from '../../../lib/db';
 import { getUserById } from '../../../lib/users';
 import { notifyAgentNewLead } from '../../../lib/notify';
 import { getAgentConfig } from '../../../lib/agentConfig';
+import { buildFirstResponsePrompt, buildScoringPrompt, parseScoreResponse } from '../../../lib/aiPrompts';
 import { v4 as uuidv4 } from 'uuid';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -125,27 +126,27 @@ export default async function handler(req, res) {
 
 async function runAI(lead, agent) {
   const cfg = await getAgentConfig(agent?.id || lead.agentId);
+  const agentName  = agent?.name || 'your agent';
+  const agencyName = agent?.agencyName || '';
+
   if (!cfg.anthropicKey) {
-    console.warn('No Anthropic API key configured — skipping AI response for lead', lead.id);
-    // Still set a default score so lead shows up correctly in dashboard
+    console.warn('No Anthropic API key — skipping AI for lead', lead.id);
     lead.score = 'WARM';
     lead.summary = `${lead.fname} inquired about ${lead.property}. Follow up to schedule a showing.`;
+    lead.nextAction = 'Call to introduce yourself and schedule a showing.';
     await saveLead(lead);
     return;
   }
 
-  const agentName   = agent?.name || 'your agent';
-  const agencyName  = agent?.agencyName || '';
-  const anthropic   = new Anthropic({ apiKey: cfg.anthropicKey });
-  const leadMessage = lead.messages[0]?.text || `I'm interested in ${lead.property}.`;
+  const anthropic = new Anthropic({ apiKey: cfg.anthropicKey });
 
-  // ── 1. AI reply ───────────────────────────────────────────────────────────
+  // ── 1. Human-sounding first response ─────────────────────────────────────
+  const replyPrompt = buildFirstResponsePrompt({ agentName, agencyName, lead });
   const replyResp = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 300,
-    system: `You are a Say Hello Leads AI real estate assistant responding on behalf of ${agentName}${agencyName ? ` at ${agencyName}` : ''}.
-A buyer just submitted an inquiry. Respond warmly, reference the property by name. Ask ONE qualifying question (timeline, budget, or pre-approval). Keep it under 4 sentences. Sign off as "${agentName} (via Say Hello Leads)".`,
-    messages: [{ role: 'user', content: leadMessage }],
+    max_tokens: 250,
+    system: replyPrompt.system,
+    messages: replyPrompt.messages,
   });
 
   const aiReply = replyResp.content?.[0]?.text?.trim() || '';
@@ -154,37 +155,26 @@ A buyer just submitted an inquiry. Respond warmly, reference the property by nam
     lead.updatedAt = new Date().toISOString();
   }
 
-  // ── 2. Score + brief ──────────────────────────────────────────────────────
+  // ── 2. Structured scoring with signals ───────────────────────────────────
+  const scorePrompt = buildScoringPrompt({ lead });
   const scoreResp = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 150,
-    system: 'Real estate lead scoring. Respond ONLY with valid JSON, no markdown fences.',
-    messages: [{
-      role: 'user',
-      content: `Score this lead. HOT = ready to buy within 30 days + has budget. WARM = interested but timeline/budget vague. COLD = just browsing.
-
-Lead: ${lead.fname} ${lead.lname}
-Property: ${lead.property}
-Message: "${leadMessage}"
-
-Respond exactly: {"score":"HOT","summary":"2 sentence brief for the agent."}`,
-    }],
+    max_tokens: 400,
+    system: scorePrompt.system,
+    messages: scorePrompt.messages,
   });
 
-  try {
-    const raw = scoreResp.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}';
-    const parsed = JSON.parse(raw);
-    lead.score   = ['HOT','WARM','COLD'].includes(parsed.score) ? parsed.score : 'WARM';
-    lead.summary = parsed.summary || `${lead.fname} inquired about ${lead.property}. Follow up to schedule a showing.`;
-  } catch {
-    lead.score   = 'WARM';
-    lead.summary = `${lead.fname} inquired about ${lead.property}. Follow up to schedule a showing.`;
-  }
+  const scored = parseScoreResponse(scoreResp.content?.[0]?.text);
+  lead.score      = scored.score;
+  lead.confidence = scored.confidence;
+  lead.signals    = scored.signals;   // { timeline, budget, preApproved, alsoSelling, motivation, urgencyLevel }
+  lead.summary    = scored.summary || `${lead.fname} inquired about ${lead.property}.`;
+  lead.nextAction = scored.nextAction || 'Follow up to schedule a showing.';
 
-  // ── 3. Save with score + AI reply ─────────────────────────────────────────
+  // ── 3. Save with full scoring data ───────────────────────────────────────
   await saveLead(lead);
 
-  // ── 4. SMS lead if Twilio connected ───────────────────────────────────────
+  // ── 4. SMS lead if Twilio connected ──────────────────────────────────────
   if (aiReply && lead.phone && cfg.twilioSid && cfg.twilioPhone) {
     try {
       const twilio = (await import('twilio')).default;
@@ -196,7 +186,7 @@ Respond exactly: {"score":"HOT","summary":"2 sentence brief for the agent."}`,
     } catch (e) { console.error('SMS error:', e.message); }
   }
 
-  // ── 5. Email buyer if Postmark connected ──────────────────────────────────
+  // ── 5. Email buyer if Postmark connected ─────────────────────────────────
   if (aiReply && lead.email && cfg.postmarkToken) {
     try {
       const { ServerClient } = await import('postmark');
@@ -210,10 +200,11 @@ Respond exactly: {"score":"HOT","summary":"2 sentence brief for the agent."}`,
     } catch (e) { console.error('Postmark error:', e.message); }
   }
 
-  // ── 6. Notify agent via Resend ────────────────────────────────────────────
+  // ── 6. Notify agent ───────────────────────────────────────────────────────
   const agentEmail = agent?.notifyEmail || agent?.email;
   if (agentEmail) {
-    await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey).catch(e => console.error('Notify error:', e.message));
+    await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey)
+      .catch(e => console.error('Notify error:', e.message));
   }
 }
 
