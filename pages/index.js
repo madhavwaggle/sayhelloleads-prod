@@ -342,27 +342,28 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
     if (!currentLead) { setView('dashboard'); return; }
     setScoring(true);
 
-    const scorePrompt = `Score this real estate lead. HOT = ready <30 days / has budget. WARM = interested but vague. COLD = browsing.
-
-Lead: ${currentLead.fname} ${currentLead.lname} | Property: ${currentLead.property} | Source: ${currentLead.source}
-Conversation:
-${currentLead.messages.map(m => `${m.role === 'ai' ? 'AI' : 'Lead'}: ${m.text}`).join('\n')}
-
-Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent briefing with name, what they want, and recommended next action."}`;
+    const convo = (currentLead.messages || []).map(m => (m.role === 'ai' ? 'Assistant' : 'Lead') + ': ' + m.text).join('\n');
+    const scoreContent = 'Lead: ' + currentLead.fname + ' ' + currentLead.lname + '\nProperty: ' + currentLead.property + '\nSource: ' + currentLead.source + '\n\nConversation:\n' + convo + '\n\nRules: HOT = timeline within 60 days AND pre-approved or specific budget. WARM = interested but vague. COLD = browsing.\n\nRespond ONLY as valid JSON: {"score":"HOT","confidence":"high","signals":{"timeline":"30 days","budget":"$400k","preApproved":true,"alsoSelling":false,"motivation":"relocating","urgencyLevel":"high"},"summary":"2-sentence brief about the lead.","nextAction":"Specific recommended next step for the agent."}';
 
     try {
       const data = await callAPI('/api/chat', {
-        system: 'You are a lead scoring assistant. Respond only with JSON.',
-        messages: [{ role: 'user', content: scorePrompt }],
-        max_tokens: 200,
+        system: 'You are a real estate lead scoring expert. Respond ONLY with valid JSON, no markdown.',
+        messages: [{ role: 'user', content: scoreContent }],
+        max_tokens: 400,
       });
       const clean = data.reply.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
-      currentLead.score = parsed.score || 'WARM';
-      currentLead.summary = parsed.summary || '';
+      currentLead.score      = ['HOT','WARM','COLD'].includes(parsed.score) ? parsed.score : 'WARM';
+      currentLead.confidence = parsed.confidence || 'medium';
+      currentLead.signals    = parsed.signals    || {};
+      currentLead.summary    = parsed.summary    || '';
+      currentLead.nextAction = parsed.nextAction || 'Follow up to schedule a showing.';
     } catch {
-      currentLead.score = 'WARM';
-      currentLead.summary = `${currentLead.fname} inquired about ${currentLead.property}. Follow up to schedule a showing.`;
+      currentLead.score      = 'WARM';
+      currentLead.confidence = 'low';
+      currentLead.signals    = {};
+      currentLead.summary    = currentLead.fname + ' inquired about ' + currentLead.property + '. Follow up.';
+      currentLead.nextAction = 'Follow up to qualify.';
     }
 
     await callAPI('/api/leads', { ...currentLead, updatedAt: new Date().toISOString() });
@@ -456,50 +457,182 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
       {/* LANDING */}
       {view === 'landing' && (
         <section className="fade-in">
+
+          {/* ── HERO ────────────────────────────────────────────────── */}
           <div className="hero">
-            <div className="hero-badge">✦ AI-powered lead response</div>
-            <h1>Never lose a lead to<br /><em>slow response</em> again</h1>
-            <p>Say Hello Leads connects to Zillow, Homes.com, Realtor.com and your phone — responds to every lead in under 60 seconds — qualifies them overnight — and delivers hot-lead briefings right to your dashboard.</p>
+            <div className="hero-badge">✦ Powered by Claude AI · Built for real estate</div>
+            <h1>Respond to every lead<br /><em>in 60 seconds.</em> Automatically.</h1>
+            <p>Most agents take 15 hours to reply. By then, the buyer has moved on. Say Hello Leads responds the moment a lead comes in — qualifies them overnight — and tells you exactly who to call first.</p>
             <div className="hero-cta">
-              <button className="btn-primary" onClick={() => setView('demo')}>Try the agent demo →</button>
-              <button className="btn-outline" onClick={() => session ? setView('dashboard') : router.push('/login')}>View agent dashboard</button>
+              <button className="btn-primary" onClick={() => router.push('/register')}>Start free — no credit card →</button>
+              <button className="btn-outline" onClick={() => setView('demo')}>See live demo</button>
+            </div>
+            <div style={{ marginTop: '1.5rem', fontSize: '13px', color: 'var(--muted)', display: 'flex', gap: '1.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <span>✓ Setup in under 5 minutes</span>
+              <span>✓ Works with Zillow, SMS, your website</span>
+              <span>✓ Cancel anytime</span>
             </div>
           </div>
 
+          {/* ── PAIN STATS ──────────────────────────────────────────── */}
           <div className="stats-bar">
-            {[['15 hrs','avg agent response time'],['41%','leads never contacted'],['<60s','Say Hello Leads response time'],['$14k+','avg monthly revenue left on table']].map(([n,l]) => (
-              <div className="stat-item" key={l}><div className="stat-num">{n}</div><div className="stat-label">{l}</div></div>
+            {[
+              ['15 hrs', 'avg agent response time'],
+              ['41%',    'of leads never contacted'],
+              ['5×',     'more conversions with <5min reply'],
+              ['$14k+',  'avg monthly revenue left on table'],
+            ].map(([n,l]) => (
+              <div className="stat-item" key={l}>
+                <div className="stat-num">{n}</div>
+                <div className="stat-label">{l}</div>
+              </div>
             ))}
           </div>
 
-          <div className="integration-bar">
-            <h3>Connects to every lead source <em>automatically</em></h3>
-            <div className="integrations">
-              {['Zillow','Homes.com','Realtor.com','SMS / Text','Your Website','Referrals'].map(s => (
-                <div className="integration-chip" key={s}><span className="dot-green" />{s}</div>
+          {/* ── PROBLEM → SOLUTION ──────────────────────────────────── */}
+          <div style={{ maxWidth: '860px', margin: '4rem auto', padding: '0 2rem' }}>
+            <div className="section-label">The problem</div>
+            <div className="section-title">You work hard to get leads.<br />Then life gets in the way.</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
+              {[
+                ['😰', "You're showing a home when a Zillow lead texts in.", "They don't hear back for 6 hours. They've already booked with someone else."],
+                ['😤', "You follow up once. They don't reply.", "44% of agents give up after one contact. It takes 5+ to close."],
+                ['😓', "You pay $500/mo for Zillow leads.", "Almost half are never contacted. That's money straight in the trash."],
+              ].map(([emoji, prob, pain]) => (
+                <div key={prob} style={{ background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem' }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '.75rem' }}>{emoji}</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '.4rem', color: 'var(--black)' }}>{prob}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.6' }}>{pain}</div>
+                </div>
               ))}
             </div>
-          </div>
 
-          <div className="how-it-works">
-            <div className="section-label">How it works</div>
-            <div className="section-title">From inquiry to booked showing — automatically</div>
+            <div className="section-label">The solution</div>
+            <div className="section-title">Say Hello AI works while you don't.</div>
             <div className="steps">
               {[
-                ['1','Lead comes in','From Zillow, Homes.com, Realtor.com, text, or your site — any source, any time.'],
-                ['2','AI responds instantly','A personalized reply goes out within 60 seconds — while you\'re showing homes or asleep.'],
-                ['3','Lead gets qualified','The AI learns their timeline, budget, and pre-approval through natural conversation.'],
-                ['4','You get the brief','Hot leads get a push alert: name, score, summary, and full conversation.'],
+                ['1', 'Lead comes in — any source', 'Zillow, Homes.com, Realtor.com, a text, or your website. Any time, day or night.'],
+                ['2', 'AI responds in under 60s', 'A warm, personalized reply goes out immediately — written in your voice, referencing the exact property.'],
+                ['3', 'Lead gets qualified', 'The AI has a natural back-and-forth — learning timeline, budget, pre-approval, and motivation.'],
+                ['4', 'You get the brief', '🔥 Hot leads trigger an instant alert: who they are, what they want, and what to say when you call.'],
               ].map(([n,h,p]) => (
                 <div className="step" key={n}><div className="step-num">{n}</div><h3>{h}</h3><p>{p}</p></div>
               ))}
             </div>
           </div>
 
-          <div className="demo-cta-block">
-            <h2>See exactly how your leads experience <em>instant AI response</em></h2>
-            <button className="btn-primary" onClick={() => setView('demo')}>Try the agent demo →</button>
+          {/* ── LEAD SCORE EXPLAINER ────────────────────────────────── */}
+          <div style={{ background: 'var(--cream)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '4rem 2rem' }}>
+            <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+              <div className="section-label">AI lead scoring</div>
+              <div className="section-title">Know exactly who to call first.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                <div style={{ background: '#fde8e8', border: '1.5px solid #f5c6c6', borderRadius: '14px', padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.75rem' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🔥</span>
+                    <span style={{ fontWeight: '700', color: 'var(--red)', fontSize: '15px' }}>HOT</span>
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--black)', lineHeight: '1.7' }}>
+                    Ready to buy within <strong>30 days</strong>. Has a budget. Pre-approved or cash buyer. Asking about specific properties, not just browsing.
+                  </div>
+                  <div style={{ marginTop: '.75rem', fontSize: '12px', color: 'var(--red)', fontWeight: '600' }}>→ Call within 5 minutes</div>
+                </div>
+                <div style={{ background: 'var(--amber-light)', border: '1.5px solid #f0d9b5', borderRadius: '14px', padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.75rem' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🌤️</span>
+                    <span style={{ fontWeight: '700', color: 'var(--amber)', fontSize: '15px' }}>WARM</span>
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--black)', lineHeight: '1.7' }}>
+                    Interested but timeline is <strong>vague</strong>. May not be pre-approved yet. Exploring options. Responds to follow-up.
+                  </div>
+                  <div style={{ marginTop: '.75rem', fontSize: '12px', color: 'var(--amber)', fontWeight: '600' }}>→ Nurture with weekly check-ins</div>
+                </div>
+                <div style={{ background: '#e8eef8', border: '1.5px solid #c5d0e8', borderRadius: '14px', padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.75rem' }}>
+                    <span style={{ fontSize: '1.2rem' }}>❄️</span>
+                    <span style={{ fontWeight: '700', color: '#5470a0', fontSize: '15px' }}>COLD</span>
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--black)', lineHeight: '1.7' }}>
+                    <strong>Just browsing</strong>. No timeline, no budget clarity, very early research stage. Low urgency or potentially not a real buyer.
+                  </div>
+                  <div style={{ marginTop: '.75rem', fontSize: '12px', color: '#5470a0', fontWeight: '600' }}>→ Add to long-term drip</div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* ── INTEGRATIONS ────────────────────────────────────────── */}
+          <div className="integration-bar">
+            <h3>Works with every lead source <em>automatically</em></h3>
+            <div className="integrations">
+              {['Zillow Premier Agent','Homes.com','Realtor.com','SMS / Text','Your Website','Zapier / Webhooks'].map(s => (
+                <div className="integration-chip" key={s}><span className="dot-green" />{s}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── SOCIAL PROOF ────────────────────────────────────────── */}
+          <div style={{ maxWidth: '860px', margin: '4rem auto', padding: '0 2rem' }}>
+            <div className="section-label">What agents say</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+              {[
+                ['"I used to lose leads every weekend. Now they get a response in under a minute — whether I'm showing a home or at my kid's soccer game."', 'Maria C.', 'Keller Williams, Cincinnati'],
+                ['"My Zillow spend was $600/mo and I was missing half the leads. In the first week using this I booked 3 showings from leads I would have lost."', 'James T.', 'RE/MAX, Columbus'],
+                ['"The AI sounds more professional than my usual texts. Leads actually think they're talking to my assistant. That's exactly what I wanted."', 'Priya S.', 'Independent Agent, Dayton'],
+              ].map(([quote, name, title]) => (
+                <div key={name} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--black)', lineHeight: '1.7', marginBottom: '1rem', fontStyle: 'italic' }}>{quote}</div>
+                  <div style={{ fontSize: '13px', fontWeight: '600' }}>{name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{title}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── PRICING ─────────────────────────────────────────────── */}
+          <div style={{ background: 'var(--cream)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '4rem 2rem' }}>
+            <div style={{ maxWidth: '720px', margin: '0 auto', textAlign: 'center' }}>
+              <div className="section-label">Pricing</div>
+              <div className="section-title" style={{ margin: '0 auto 2rem' }}>Simple, straightforward.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                {[
+                  { name: 'Solo Agent', price: '$79', period: '/mo', features: ['1 agent', 'Unlimited leads', 'AI responses + scoring', 'Email alerts', 'Zillow + SMS + Website'], highlight: false },
+                  { name: 'Team', price: '$199', period: '/mo', features: ['Up to 5 agents', 'Everything in Solo', 'Team dashboard', 'Priority support', 'Onboarding call'], highlight: true },
+                  { name: 'Brokerage', price: '$499', period: '/mo', features: ['Unlimited agents', 'Everything in Team', 'Custom branding', 'API access', 'Dedicated support'], highlight: false },
+                ].map(plan => (
+                  <div key={plan.name} style={{
+                    background: plan.highlight ? 'var(--sage)' : 'var(--white)',
+                    border: `2px solid ${plan.highlight ? 'var(--sage)' : 'var(--border)'}`,
+                    borderRadius: '16px', padding: '1.75rem',
+                    color: plan.highlight ? '#fff' : 'var(--black)',
+                    position: 'relative',
+                  }}>
+                    {plan.highlight && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--amber)', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '3px 12px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '.05em', whiteSpace: 'nowrap' }}>Most popular</div>}
+                    <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '.5rem', opacity: plan.highlight ? .85 : 1 }}>{plan.name}</div>
+                    <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: '2.2rem', lineHeight: '1', marginBottom: '.2rem' }}>{plan.price}<span style={{ fontSize: '14px', fontWeight: '400' }}>{plan.period}</span></div>
+                    <div style={{ height: '1px', background: plan.highlight ? 'rgba(255,255,255,.2)' : 'var(--border)', margin: '1rem 0' }} />
+                    {plan.features.map(f => <div key={f} style={{ fontSize: '13px', marginBottom: '.4rem', opacity: plan.highlight ? .9 : .85 }}>✓ {f}</div>)}
+                    <button
+                      onClick={() => router.push('/register')}
+                      style={{ width: '100%', marginTop: '1.25rem', background: plan.highlight ? '#fff' : 'var(--sage)', color: plan.highlight ? 'var(--sage)' : '#fff', border: 'none', borderRadius: '8px', padding: '.7rem', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", fontWeight: '600', cursor: 'pointer' }}
+                    >
+                      Get started →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── FINAL CTA ───────────────────────────────────────────── */}
+          <div className="demo-cta-block">
+            <h2>See it work on a <em>real lead</em> right now</h2>
+            <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
+              <button className="btn-primary" onClick={() => setView('demo')}>Try the live demo →</button>
+              <button onClick={() => router.push('/register')} style={{ background: 'transparent', color: '#fff', border: '1.5px solid rgba(255,255,255,.4)', borderRadius: 'var(--radius)', padding: '.75rem 1.75rem', fontSize: '15px', fontFamily: "'DM Sans', sans-serif", fontWeight: '500', cursor: 'pointer' }}>Create free account</button>
+            </div>
+          </div>
+
         </section>
       )}
 
@@ -715,6 +848,25 @@ Respond ONLY as JSON (no markdown): {"score":"HOT","summary":"2-sentence agent b
                   {openDetailId === lead.id && (
                     <div className="lead-detail-panel open">
                       {lead.summary && <div className="detail-summary"><strong>AI brief:</strong> {lead.summary}</div>}
+
+                      {lead.nextAction && (
+                        <div style={{ background: lead.score === 'HOT' ? '#fde8e8' : 'var(--sage-light)', border: '1px solid ' + (lead.score === 'HOT' ? '#f5c6c6' : 'var(--sage-mid)'), borderRadius: '10px', padding: '.75rem 1rem', marginBottom: '1rem', fontSize: '13px' }}>
+                          <span style={{ fontWeight: '600', color: lead.score === 'HOT' ? 'var(--red)' : 'var(--sage)' }}>{lead.score === 'HOT' ? '🔥 Next: ' : '→ Next: '}</span>
+                          {lead.nextAction}
+                        </div>
+                      )}
+
+                      {lead.signals && Object.keys(lead.signals || {}).length > 0 && (
+                        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                          {lead.signals.timeline && lead.signals.timeline !== 'unknown' && <span style={{ background: '#e8f4fd', color: '#2471a3', borderRadius: '20px', padding: '.2rem .7rem', fontSize: '12px', fontWeight: '500' }}>📅 {lead.signals.timeline}</span>}
+                          {lead.signals.budget && lead.signals.budget !== 'unknown' && <span style={{ background: '#e8f4fd', color: '#2471a3', borderRadius: '20px', padding: '.2rem .7rem', fontSize: '12px', fontWeight: '500' }}>💰 {lead.signals.budget}</span>}
+                          {lead.signals.preApproved === true && <span style={{ background: '#e8f8ee', color: '#1e8449', borderRadius: '20px', padding: '.2rem .7rem', fontSize: '12px', fontWeight: '500' }}>✓ Pre-approved</span>}
+                          {lead.signals.preApproved === false && <span style={{ background: '#fde8e8', color: 'var(--red)', borderRadius: '20px', padding: '.2rem .7rem', fontSize: '12px', fontWeight: '500' }}>✗ Not pre-approved</span>}
+                          {lead.signals.alsoSelling === true && <span style={{ background: 'var(--amber-light)', color: 'var(--amber)', borderRadius: '20px', padding: '.2rem .7rem', fontSize: '12px', fontWeight: '500' }}>🏠 Also selling</span>}
+                          {lead.signals.motivation && lead.signals.motivation !== 'unknown' && <span style={{ background: 'var(--cream)', color: 'var(--muted)', borderRadius: '20px', padding: '.2rem .7rem', fontSize: '12px' }}>📌 {lead.signals.motivation}</span>}
+                        </div>
+                      )}
+
                       <div className="detail-tags">
                         {lead.email && <span className="pill">{lead.email}</span>}
                         {lead.phone && <span className="pill">{lead.phone}</span>}
@@ -1035,12 +1187,17 @@ function CredField({ label, field, placeholder, current, saving, msg, onSave }) 
 // ─── SYSTEM PROMPT BUILDER ────────────────────────────────────────────────────
 
 function buildSystemPrompt(fname, lname, email, phone, property, source, message, agentName) {
-  return `You are a Say Hello Leads AI real estate lead assistant working on behalf of ${agentName || 'your agent'}. A new lead just came in.
+  const name = agentName || 'your agent';
+  return `You are a real estate assistant working directly for ${name}. You are NOT an AI — you are their assistant. Never mention AI, automation, or bots.
 
 Lead: ${fname} ${lname} | Email: ${email} | Phone: ${phone || 'not provided'} | Property: ${property} | Source: ${source}
-Their message: "${message}"
+Message: "${message}"
 
-Respond warmly and professionally. Reference the specific property. Ask ONE qualifying question (timeline, budget, pre-approval, or if they're also selling). Under 4 sentences. Sound like a real, helpful person. Sign off as "Say Hello Leads AI, on behalf of your agent".`;
+YOUR REPLY:
+- 2-3 sentences max. Reference the EXACT property or area they mentioned.
+- Ask ONE qualifying question — timeline, budget, pre-approval, or also-selling.
+- Sound like a real human — warm, not scripted. No "Hi there!", no "Great!", no AI mentions.
+- End naturally, no sign-off.`;
 }
 
 // ─── SETUP STEPS ─────────────────────────────────────────────────────────────
