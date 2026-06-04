@@ -204,6 +204,42 @@ export default function AgentPage({ agent, notFound }) {
         .reply-row button:disabled { background: var(--muted); cursor: not-allowed; }
         @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         @keyframes blink { 0%,80%,100% { opacity: .3; } 40% { opacity: 1; } }
+
+        /* ── Google Places autocomplete dropdown fix ── */
+        .pac-container {
+          border-radius: 10px;
+          border: 1.5px solid var(--border);
+          box-shadow: 0 4px 16px rgba(0,0,0,.10);
+          font-family: 'DM Sans', sans-serif;
+          margin-top: 4px;
+          z-index: 9999;
+        }
+        .pac-item {
+          padding: .6rem .9rem;
+          font-size: 13px;
+          cursor: pointer;
+          border-top: 1px solid var(--border);
+          display: flex;
+          align-items: center;
+          gap: .5rem;
+          line-height: 1.4;
+        }
+        .pac-item:first-child { border-top: none; }
+        .pac-item:hover { background: var(--sage-light); }
+        .pac-item-query {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--black);
+          padding-right: 4px;
+        }
+        .pac-matched { font-weight: 700; }
+        .pac-icon { display: none; }
+        .pac-logo:after { display: none; }
+        .pac-container:after { 
+          background-image: none !important;
+          height: 0;
+          padding: 0;
+        }
       `}</style>
 
       {/* ── TOP BAR ─────────────────────────────────────────────────────────── */}
