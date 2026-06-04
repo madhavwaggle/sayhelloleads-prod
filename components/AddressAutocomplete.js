@@ -42,9 +42,8 @@ function loadGoogleScript(apiKey) {
 }
 
 export default function AddressAutocomplete({ value, onChange, placeholder, className, style }) {
-  const inputRef   = useRef(null);
-  const acRef      = useRef(null);
-  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+  const acRef    = useRef(null);
   const [ready, setReady] = useState(false);
   const apiKey   = process.env.NEXT_PUBLIC_GOOGLE_PLACES_KEY;
 
@@ -63,18 +62,6 @@ export default function AddressAutocomplete({ value, onChange, placeholder, clas
       componentRestrictions: { country: 'us' },
       fields: ['formatted_address', 'name'],
     });
-
-    // Stop the pac-container from being clipped by parent overflow
-    // by moving it to the wrapper div instead of body
-    if (wrapperRef.current) {
-      const observer = new MutationObserver(() => {
-        const pac = document.querySelector('.pac-container');
-        if (pac && pac.parentElement !== wrapperRef.current) {
-          wrapperRef.current.appendChild(pac);
-        }
-      });
-      observer.observe(document.body, { childList: true });
-    }
 
     acRef.current.addListener('place_changed', () => {
       const place = acRef.current.getPlace();
@@ -96,17 +83,15 @@ export default function AddressAutocomplete({ value, onChange, placeholder, clas
   }, [value]);
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative' }}>
-      <input
-        ref={inputRef}
-        type="text"
-        defaultValue={value || ''}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder || 'Enter property address'}
-        className={className}
-        style={{ ...style, width: '100%' }}
-        autoComplete="off"
-      />
-    </div>
+    <input
+      ref={inputRef}
+      type="text"
+      defaultValue={value || ''}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder || 'Enter property address'}
+      className={className}
+      style={style}
+      autoComplete="off"
+    />
   );
 }
