@@ -9,6 +9,7 @@ import { getLead, saveLead } from '../../../lib/db';
 import { getUserById } from '../../../lib/users';
 import { getAgentConfig } from '../../../lib/agentConfig';
 import { buildConversationPrompt, buildScoringPrompt, parseScoreResponse } from '../../../lib/aiPrompts';
+import { processReply, fallbackReply, validateScore } from '../../../lib/guardrails';
 import { notifyAgentNewLead } from '../../../lib/notify';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -37,20 +38,34 @@ export default async function handler(req, res) {
 
   // Build conversation history in the format Claude expects
   const conversationHistory = lead.messages.map(m => ({
-    role: m.role === 'ai' ? 'assistant' : 'user',
+    role:    m.role === 'ai' ? 'assistant' : 'user',
     content: m.text,
   }));
 
   // Get AI reply
   const prompt = buildConversationPrompt({ agentName, lead, conversationHistory });
   const resp = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-20250514',
     max_tokens: 250,
-    system: prompt.system,
-    messages: prompt.messages,
+    system:     prompt.system,
+    messages:   prompt.messages,
   }).catch(() => null);
 
-  const reply = resp?.content?.[0]?.text?.trim() || "Got it! I'll follow up with you shortly.";
+  const rawReply = resp?.content?.[0]?.text || '';
+  const { text: cleanedReply, safe, flags } = processReply(rawReply);
+
+  if (flags.length > 0) {
+    console.warn(`[guardrails] agent/chat reply flags for lead ${leadId}:`, flags);
+  }
+
+  const reply = safe
+    ? (cleanedReply || fallbackReply(agentName))
+    : fallbackReply(agentName);
+
+  if (!safe) {
+    console.warn(`[guardrails] agent/chat reply FAILED for lead ${leadId} — using fallback. Flags:`, flags);
+  }
+
   lead.messages.push({ role: 'ai', text: reply });
 
   // Score on first message, then re-score every 2 after that
@@ -59,20 +74,23 @@ export default async function handler(req, res) {
     try {
       const scorePrompt = buildScoringPrompt({ lead });
       const scoreResp = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model:      'claude-sonnet-4-20250514',
         max_tokens: 500,
-        system: scorePrompt.system,
-        messages: scorePrompt.messages,
+        system:     scorePrompt.system,
+        messages:   scorePrompt.messages,
       });
       const scored = parseScoreResponse(scoreResp.content?.[0]?.text);
-      lead.score              = scored.score;
-      lead.confidence         = scored.confidence;
-      lead.signals            = scored.signals;
-      lead.summary            = scored.summary || lead.summary;
-      lead.nextAction         = scored.nextAction || lead.nextAction;
-      // New fields from updated scoring prompt
-      if (scored.signals?.triggerWords)         lead.triggerWords = scored.signals.triggerWords;
-      if (scored.signals?.responseEngagement)   lead.responseEngagement = scored.signals.responseEngagement;
+      if (validateScore(scored)) {
+        lead.score              = scored.score;
+        lead.confidence         = scored.confidence;
+        lead.signals            = scored.signals;
+        lead.summary            = scored.summary || lead.summary;
+        lead.nextAction         = scored.nextAction || lead.nextAction;
+        if (scored.signals?.triggerWords)       lead.triggerWords       = scored.signals.triggerWords;
+        if (scored.signals?.responseEngagement) lead.responseEngagement = scored.signals.responseEngagement;
+      } else {
+        console.warn(`[guardrails] invalid score for lead ${leadId} — keeping existing score`);
+      }
 
       // Notify on first message, again if score becomes HOT
       if (buyerMessageCount === 1 || scored.score === 'HOT') {
