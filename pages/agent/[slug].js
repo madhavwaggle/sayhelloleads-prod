@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
 import Head from 'next/head';
 
 const SOURCES = ['Agent Website', 'Zillow', 'Homes.com', 'Realtor.com', 'Redfin', 'Friend/Referral', 'Social Media', 'Other'];
@@ -246,7 +247,11 @@ export default function AgentPage({ agent, notFound }) {
             </div>
             <div className="field">
               <label>Property you're interested in</label>
-              <input value={form.property} onChange={e => setForm(f => ({...f, property: e.target.value}))} placeholder="e.g. 412 Elm St, 3BR in Hyde Park, or just the area" />
+              <AddressAutocomplete
+                value={form.property}
+                onChange={val => setForm(f => ({...f, property: val}))}
+                placeholder="e.g. 412 Elm St, 3BR in Hyde Park, or just the area"
+              />
             </div>
             <div className="field">
               <label>Your message</label>
