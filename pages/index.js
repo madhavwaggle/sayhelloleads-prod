@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import Head from 'next/head';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -692,7 +693,15 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                 <label htmlFor="sms-chk">Send real SMS (requires Twilio setup)</label>
               </div>
             </div>
-            <div className="field"><label>Property they inquired about</label><input value={form.property} onChange={e => setForm(f => ({...f, property: e.target.value}))} placeholder="e.g. 412 Elm Street, 3BR in Hyde Park" /></div>
+            <div className="field">
+              <label>Property they inquired about</label>
+              <AddressAutocomplete
+                value={form.property}
+                onChange={val => setForm(f => ({...f, property: val}))}
+                placeholder="e.g. 412 Elm Street, 3BR in Hyde Park"
+                className="setup-input"
+              />
+            </div>
             <div className="field"><label>Their message</label><textarea value={form.message} onChange={e => setForm(f => ({...f, message: e.target.value}))} /></div>
             <div className="field"><label>Lead source</label>
               <select value={form.source} onChange={e => setForm(f => ({...f, source: e.target.value}))}>
