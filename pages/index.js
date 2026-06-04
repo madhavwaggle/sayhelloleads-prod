@@ -45,6 +45,12 @@ export default function App() {
   const [filter, setFilter] = useState('all');
   const [openDetailId, setOpenDetailId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [demoConnecting, setDemoConnecting] = useState(false);
+
+  // Human-like delay: 1s base + 20ms per char, capped at 4s
+  function typingDelay(text) {
+    return Math.min(1000 + (text?.length || 0) * 20, 4000);
+  }
   const [scoring, setScoring] = useState(false);
   const [profile, setProfile] = useState({ name: '', agencyName: '', notifyEmail: '', phone: '' });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -255,16 +261,31 @@ export default function App() {
     setCurrentLead(lead);
     const initHistory = [{ role: 'user', content: msgText }];
     setConversationHistory(initHistory);
-    setChatMessages([{ role: 'lead', name: `${fname} ${lname}`, text: msgText }]);
-    setView('conversation');
+
+    // Show connecting screen before switching to conversation view
+    setDemoConnecting(true);
     setSubmitting(true);
 
     const systemPrompt = buildSystemPrompt(fname, lname, email, phone, propText, source, msgText, session?.user?.name);
-    setIsTyping(true);
 
     try {
-      const data = await callAPI('/api/chat', { system: systemPrompt, messages: initHistory });
+      // Fire API call immediately in background
+      const apiPromise = callAPI('/api/chat', { system: systemPrompt, messages: initHistory });
+
+      // Hold connecting screen for 1.5s
+      await new Promise(r => setTimeout(r, 1500));
+      setDemoConnecting(false);
+
+      // Now show chat with buyer message + typing indicator
+      setChatMessages([{ role: 'lead', name: `${fname} ${lname}`, text: msgText }]);
+      setView('conversation');
+      setIsTyping(true);
+
+      const data = await apiPromise;
       const reply = data.reply;
+
+      // Scale delay to reply length
+      await new Promise(r => setTimeout(r, typingDelay(reply)));
       setIsTyping(false);
 
       const newHistory = [...initHistory, { role: 'assistant', content: reply }];
@@ -316,6 +337,9 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
     try {
       const data = await callAPI('/api/chat', { system: systemPrompt, messages: newHistory });
       const reply = data.reply;
+
+      // Scale typing delay to reply length — feels human
+      await new Promise(r => setTimeout(r, typingDelay(reply)));
       setIsTyping(false);
 
       setConversationHistory(prev => [...prev, { role: 'assistant', content: reply }]);
@@ -675,6 +699,21 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
       )}
 
       {/* CONVERSATION */}
+      {/* ── DEMO CONNECTING SCREEN ──────────────────────────────────────────── */}
+      {demoConnecting && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '360px', gap: '1.5rem' }}>
+          <div style={{ width: '68px', height: '68px', borderRadius: '50%', background: 'var(--sage)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: '600', fontFamily: "'Instrument Serif', serif" }}>
+            {(session?.user?.name || 'A').charAt(0).toUpperCase()}
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '.4rem' }}>Connecting you with {session?.user?.name?.split(' ')[0] || 'the agent'}</div>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <span className="dot" /><span className="dot" /><span className="dot" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {view === 'conversation' && currentLead && (
         <section className="fade-in" style={{ maxWidth: '640px', margin: '3rem auto', padding: '0 1.5rem 4rem' }}>
           <div className="convo-header">
