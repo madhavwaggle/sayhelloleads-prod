@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { signIn, getSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import Head from 'head';
+import Head from 'next/head';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,11 +10,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [magicSent, setMagicSent] = useState(false);
+  const [mode, setMode] = useState('password'); // 'password' | 'magic'
 
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    if (mode === 'magic') {
+      const res = await signIn('email', { email, redirect: false });
+      setLoading(false);
+      if (res?.error) setError('Could not send magic link. Check email config.');
+      else setMagicSent(true);
+      return;
+    }
 
     const res = await signIn('credentials', {
       email,
@@ -24,7 +34,7 @@ export default function LoginPage() {
 
     setLoading(false);
     if (res?.error) {
-      setError("That email and password combination doesn't match our records. Please try again or reset your password below.");
+      setError('That email and password combination doesn\'t match our records. Please try again or reset your password below.');
     } else {
       router.push('/');
     }
@@ -34,8 +44,8 @@ export default function LoginPage() {
     <>
       <Head>
         <title>Sign in — Say HelloLeads</title>
-        <link rel="preconnect" href="https://googleapis.com" />
-        <link href="https://googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
       </Head>
       <style jsx global>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -55,49 +65,69 @@ export default function LoginPage() {
           <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Sign in to your agent dashboard</p>
         </div>
 
-        <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: '16px', padding: '2rem 2rem 1.5rem 2rem' }}>
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                placeholder="agent@youragency.com"
-                style={{ width: '100%', padding: '.65rem .9rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', outline: 'none', background: 'var(--cream)' }}
-              />
+        <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: '16px', padding: '2rem' }}>
+          {magicSent ? (
+            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📧</div>
+              <h3 style={{ marginBottom: '.5rem' }}>Check your email</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '14px' }}>We sent a sign-in link to <strong>{email}</strong></p>
             </div>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.35rem' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', margin: 0 }}>Password</label>
-                <a href="/reset-password" style={{ fontSize: '12px', color: 'var(--sage)', textDecoration: 'none' }}>Forgot password?</a>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  placeholder="agent@youragency.com"
+                  style={{ width: '100%', padding: '.65rem .9rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', outline: 'none', background: 'var(--cream)' }}
+                />
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                style={{ width: '100%', padding: '.65rem .9rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', outline: 'none', background: 'var(--cream)' }}
-              />
-            </div>
 
-            {error && (
-              <div style={{ background: '#fde8e8', border: '1px solid #f5c6c6', borderRadius: '8px', padding: '.65rem .9rem', fontSize: '13px', color: 'var(--red)', marginBottom: '1rem' }}>
-                {error}
+              {mode === 'password' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.35rem' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', margin: 0 }}>Password</label>
+                    <a href="/reset-password" style={{ fontSize: '12px', color: 'var(--sage)', textDecoration: 'none' }}>Forgot password?</a>
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    style={{ width: '100%', padding: '.65rem .9rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', outline: 'none', background: 'var(--cream)' }}
+                  />
+                </div>
+              )}
+
+              {error && (
+                <div style={{ background: '#fde8e8', border: '1px solid #f5c6c6', borderRadius: '8px', padding: '.65rem .9rem', fontSize: '13px', color: 'var(--red)', marginBottom: '1rem' }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{ width: '100%', background: 'var(--sage)', color: '#fff', border: 'none', borderRadius: '8px', padding: '.8rem', fontSize: '15px', fontFamily: 'inherit', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? .7 : 1 }}
+              >
+                {loading ? 'Signing in…' : mode === 'magic' ? 'Send magic link →' : 'Sign in →'}
+              </button>
+
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { setMode(mode === 'password' ? 'magic' : 'password'); setError(''); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--sage)', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  {mode === 'password' ? 'Use magic link instead' : 'Use password instead'}
+                </button>
               </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ width: '100%', background: 'var(--sage)', color: '#fff', border: 'none', borderRadius: '8px', padding: '.8rem', fontSize: '15px', fontFamily: 'inherit', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? .7 : 1, marginBottom: '0.5rem' }}
-            >
-              {loading ? 'Signing in…' : 'Sign in →'}
-            </button>
-          </form>
+            </form>
+          )}
         </div>
 
         <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '13px', color: 'var(--muted)' }}>
