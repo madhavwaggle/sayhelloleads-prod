@@ -494,7 +494,7 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
 
           {/* ── HERO ────────────────────────────────────────────────── */}
           <div className="hero">
-            <div className="hero-badge">✦ Powered by AI · Built for real estate</div>
+            <div className="hero-badge">✦ Powered by AI · Built for real estate agents</div>
             <h1>Respond to every lead<br /><em>in 60 seconds.</em> Automatically.</h1>
             <p>Most agents take 15 hours to reply. By then, the buyer has moved on. Say HelloLeads responds the moment a lead comes in — qualifies every lead — and tells you exactly who to call first.</p>
             <div className="hero-cta">
