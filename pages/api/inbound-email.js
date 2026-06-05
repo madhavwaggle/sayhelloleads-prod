@@ -3,11 +3,13 @@
  * Postmark inbound webhook — receives forwarded lead emails from Zillow,
  * Homes.com, Realtor.com etc. and creates a lead for the correct agent.
  *
- * Setup: In Postmark, set inbound webhook to:
- *   https://www.sayhelloleads.com/api/inbound-email
- * Each agent gets a unique inbound address like:
- *   <agentId>@inbound.postmarkapp.com
- * They forward their Zillow/Homes.com notification emails to that address.
+ * Setup in Postmark:
+ *   Inbound webhook URL → https://www.sayhelloleads.com/api/inbound-email
+ *   Inbound domain      → inbound.sayhelloleads.com
+ *
+ * Each agent's unique forwarding address:
+ *   <agentId>@inbound.sayhelloleads.com
+ *   e.g. c49cbb55-b2c7-4ab0-9e60-39cd0306b3c3@inbound.sayhelloleads.com
  */
 
 import { saveLead } from '../../lib/db';
@@ -21,25 +23,51 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const payload   = req.body;
-  const toEmail   = payload?.To || payload?.ToFull?.[0]?.Email || '';
   const fromEmail = payload?.From || payload?.FromFull?.Email || '';
   const subject   = payload?.Subject || '';
   const textBody  = payload?.TextBody || payload?.StrippedTextReply || payload?.HtmlBody || '';
 
-  // Derive agentId from the "To" address — agents use <agentId>@inbound.postmarkapp.com
-  const agentId = extractAgentId(toEmail);
+  // Log raw recipient fields in dev so you can see exactly what Postmark sends
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[inbound-email] To:', payload?.To);
+    console.log('[inbound-email] OriginalRecipient:', payload?.OriginalRecipient);
+    console.log('[inbound-email] ToFull:', JSON.stringify(payload?.ToFull));
+  }
+
+  // Try every possible field Postmark might use for the recipient address.
+  // OriginalRecipient is most reliable for forwarded emails — it reflects
+  // the actual address the message was delivered to, not a rewritten envelope.
+  const candidateAddresses = [
+    payload?.OriginalRecipient,
+    payload?.To,
+    ...(payload?.ToFull || []).map(t => t?.Email || t?.MailboxHash || ''),
+    payload?.Cc,
+    ...(payload?.CcFull || []).map(t => t?.Email || ''),
+  ].filter(Boolean);
+
+  let agentId = null;
+  for (const addr of candidateAddresses) {
+    agentId = extractAgentId(addr);
+    if (agentId) break;
+  }
+
   if (!agentId) {
-    console.warn('inbound-email: could not resolve agentId from', toEmail);
+    console.warn('[inbound-email] could not resolve agentId. Candidates:', candidateAddresses);
     return res.status(200).json({ message: 'ignored — no agent found' });
   }
 
   const agent = await getUserById(agentId).catch(() => null);
-  const cfg   = await getAgentConfig(agentId);
 
+  if (!agent) {
+    console.warn('[inbound-email] agentId extracted but no user found:', agentId);
+    return res.status(200).json({ message: 'ignored — agent not found' });
+  }
+
+  const cfg  = await getAgentConfig(agentId);
   const lead = parseLeadEmail(fromEmail, subject, textBody, agentId);
 
   if (!lead.email && !lead.phone) {
-    console.log('inbound-email: no contact info parsed from:', subject);
+    console.log('[inbound-email] no contact info parsed from:', subject);
     return res.status(200).json({ message: 'ignored — not a lead email' });
   }
 
@@ -55,14 +83,14 @@ export default async function handler(req, res) {
       triggerAIResponse(lead, agent, cfg),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 25000)),
     ]);
-  } catch (e) { console.error('inbound-email AI error:', e.message); }
+  } catch (e) { console.error('[inbound-email] AI error:', e.message); }
 
-  // Notify agent — fires after scoring so email shows HOT/WARM/COLD
+  // Notify agent — fires after scoring so notification shows HOT/WARM/COLD
   const agentEmail = agent?.notifyEmail || agent?.email;
   if (agentEmail) {
     const agentName = agent?.name || 'your agent';
     await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey)
-      .catch(e => console.error('inbound-email notify error:', e.message));
+      .catch(e => console.error('[inbound-email] notify error:', e.message));
   }
 
   return res.status(200).json({ id: lead.id, message: 'Lead captured' });
@@ -70,24 +98,47 @@ export default async function handler(req, res) {
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
+/**
+ * Extract the agent's UUID from an email address string.
+ *
+ * Handles all of:
+ *   c49cbb55-b2c7-4ab0-9e60-39cd0306b3c3@inbound.sayhelloleads.com
+ *   "Display Name <c49cbb55-b2c7-4ab0-9e60-39cd0306b3c3@inbound.sayhelloleads.com>"
+ *   de191c21614fd790df6cfed9ddc80851@inbound.postmarkapp.com  (32-char hex, no hyphens)
+ *
+ * Key fixes vs old version:
+ *   1. No `^` anchor — UUID can appear anywhere in the string, not just position 0.
+ *      Postmark often wraps addresses as "Name <uuid@domain>" so ^ always failed.
+ *   2. Two separate patterns — one for standard UUID (with hyphens), one for
+ *      32-char hex (without hyphens). The old single pattern was ambiguous.
+ */
 function extractAgentId(toAddress) {
-  const m1 = toAddress.match(/^([a-f0-9-]{36})@/i);
+  if (!toAddress || typeof toAddress !== 'string') return null;
+
+  // Standard UUID with hyphens — anywhere in the string
+  const m1 = toAddress.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})@/i);
   if (m1) return m1[1];
-  const m2 = toAddress.match(/inbound\+([^@]+)@/i);
+
+  // 32-char hex without hyphens (e.g. Postmark master address)
+  const m2 = toAddress.match(/([0-9a-f]{32})@/i);
   if (m2) return m2[1];
+
+  // inbound+<id>@sayhelloleads.com style
+  const m3 = toAddress.match(/inbound\+([^@]+)@/i);
+  if (m3) return m3[1];
+
   return null;
 }
 
 /**
- * Strip characters that could be used for prompt injection from parsed strings.
- * Lead emails are untrusted input — names, property addresses, etc. are embedded
- * directly into AI prompts, so we sanitize before they get there.
+ * Sanitize a parsed field before embedding in AI prompts.
+ * Lead emails are untrusted — strip prompt-injection characters.
  */
 function sanitizeField(str, maxLen = 120) {
   if (!str || typeof str !== 'string') return '';
   return str
-    .replace(/[`<>]/g, '')           // strip prompt-injection chars
-    .replace(/\n|\r/g, ' ')          // collapse newlines
+    .replace(/[`<>]/g, '')
+    .replace(/\n|\r/g, ' ')
     .trim()
     .slice(0, maxLen);
 }
@@ -126,12 +177,12 @@ function parseLeadEmail(fromEmail, subject, body, agentId) {
   // ── Email ──────────────────────────────────────────────────────────────────
   const emailMatch = body.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
   if (emailMatch) {
-    const skip = ['zillow','homes.com','realtor.com','redfin','trulia','postmark','sayhelloleads'];
+    const skip = ['zillow', 'homes.com', 'realtor.com', 'redfin', 'trulia', 'postmark', 'sayhelloleads'];
     if (!skip.some(s => emailMatch[0].includes(s))) lead.email = emailMatch[0].slice(0, 200);
   }
 
   // ── Phone ──────────────────────────────────────────────────────────────────
-  const phoneMatch = body.match(/(?:\+?1[\s\-.]?)?\(?(\\d{3})\)?[\s\-.]?(\d{3})[\s\-.]?(\d{4})/);
+  const phoneMatch = body.match(/(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/);
   if (phoneMatch) lead.phone = phoneMatch[0].replace(/\s/g, '').slice(0, 20);
 
   // ── Property ───────────────────────────────────────────────────────────────
@@ -149,14 +200,11 @@ function parseLeadEmail(fromEmail, subject, body, agentId) {
     lead.property = sanitizeField(subject.replace(/^(fwd|re|fw):\s*/i, ''), 80);
   }
 
-  // ── Message ────────────────────────────────────────────────────────────────
-  // Cap at 500 chars and strip injection chars — this goes directly into AI prompts
-  const safeBody = body
-    .replace(/[`<>]/g, '')
-    .trim()
-    .slice(0, 500);
-
-  lead.messages = [{ role: 'lead', text: safeBody }];
+  // ── Message — cap at 500 chars and sanitize before going into AI prompts ───
+  lead.messages = [{
+    role: 'lead',
+    text: body.replace(/[`<>]/g, '').trim().slice(0, 500),
+  }];
 
   return lead;
 }
