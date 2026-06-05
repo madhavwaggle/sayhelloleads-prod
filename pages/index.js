@@ -975,10 +975,10 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
           <div className="dash-body">
 
             {/* ONBOARDING CHECKLIST — shown until all 4 steps done */}
-            {(!checklist.profile || !checklist.zillow || !checklist.sms || !checklist.website) && (
+            {(!checklist.profile || !checklist.zillow) && (
               <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: '14px', padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
                 <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '1rem', color: 'var(--black)' }}>
-                  🚀 Get set up — {[checklist.profile, checklist.zillow, checklist.sms, checklist.website].filter(Boolean).length} of 4 steps done
+                  🚀 Get set up — {[checklist.profile, checklist.zillow].filter(Boolean).length} of 2 steps done — <span style={{fontWeight:'400',color:'var(--muted)'}}>SMS + website optional</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                   {[
@@ -1193,46 +1193,23 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
           {/* ── WHAT'S INCLUDED BANNER ───────────────────────────────── */}
           <div style={{ background: 'var(--sage-light)', border: '1.5px solid var(--sage-mid)', borderRadius: '14px', padding: '1.1rem 1.35rem', marginBottom: '1.75rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
             <div style={{ fontSize: '13px' }}>
-              <div style={{ fontWeight: '600', color: 'var(--sage)', marginBottom: '.4rem' }}>✓ Included in your subscription</div>
+              <div style={{ fontWeight: '600', color: 'var(--sage)', marginBottom: '.4rem' }}>✓ Included in your subscription — no extra setup needed</div>
               <div style={{ color: 'var(--black)', display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
                 <span>🤖 AI lead responses</span>
                 <span>📊 Lead scoring</span>
                 <span>🔔 Email alerts to you</span>
                 <span>💾 Lead storage</span>
               </div>
+              <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '.5rem' }}>Just connect your lead sources below — everything else runs automatically.</div>
             </div>
           </div>
 
-          {/* ── TWILIO SMS ───────────────────────────────────────────── */}
-          <IntegCard
-            icon="📱" title="SMS — get a Twilio number" badge="Recommended"
-            status={creds.twilioPhone?.isSet}
-            desc={<>Leads can text a real phone number and the AI responds instantly by SMS. Each agent needs their own number (~$1/mo on Twilio).<br/><br/><strong>Steps:</strong><br/>1. Sign up at <a href="https://twilio.com" target="_blank" style={{color:'var(--sage)'}}>twilio.com</a> — free trial includes credit<br/>2. Buy a local number (search your area code)<br/>3. Go to that number → Messaging → Incoming messages webhook → set to:<br/><code style={{fontSize:'12px',background:'#f3f4f6',padding:'2px 6px',borderRadius:'4px',display:'inline-block',marginTop:'4px'}}>https://www.sayhelloleads.com/api/inbound-sms</code><br/>4. Paste your credentials below</>}
-            link="https://console.twilio.com" linkLabel="Open Twilio console →"
-          >
-            <CredField
-              label="Account SID" field="twilioSid" placeholder="AC..."
-              current={creds.twilioSid} saving={credsSaving.twilioSid} msg={credsMsg.twilioSid}
-              onSave={saveCred}
-            />
-            <CredField
-              label="Auth Token" field="twilioToken" placeholder="your auth token"
-              current={creds.twilioToken} saving={credsSaving.twilioToken} msg={credsMsg.twilioToken}
-              onSave={saveCred}
-            />
-            <CredField
-              label="Your Twilio phone number" field="twilioPhone" placeholder="+15131234567"
-              current={creds.twilioPhone} saving={credsSaving.twilioPhone} msg={credsMsg.twilioPhone}
-              onSave={saveCred}
-            />
-            {creds.twilioPhone?.isSet && (
-              <div style={{ marginTop: '.75rem', background: 'var(--sage-light)', borderRadius: '8px', padding: '.75rem 1rem', fontSize: '13px', color: 'var(--sage)' }}>
-                ✓ Leads who text <strong>{creds.twilioPhone.masked}</strong> will get an instant AI reply.
-              </div>
-            )}
-          </IntegCard>
+          {/* ── START HERE BANNER ──────────────────────────────── */}
+          <div style={{ background: 'var(--sage-light)', border: '1.5px solid var(--sage-mid)', borderRadius: '10px', padding: '.75rem 1.25rem', marginBottom: '1rem', fontSize: '13px', color: 'var(--sage)', fontWeight: '500' }}>
+            ⚡ Fastest setup — start here. Takes 2 minutes. No accounts needed.
+          </div>
 
-          {/* ── ZILLOW / HOMES.COM / REALTOR.COM ─────────────────────── */}
+                    {/* ── ZILLOW / HOMES.COM / REALTOR.COM ─────────────────────── */}
           {(() => {
             const agentId = session?.user?.id || '';
             const inboundAddr = agentId ? `${agentId}@inbound.postmarkapp.com` : '';
@@ -1313,6 +1290,37 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
               </IntegCard>
             </>);
           })()}
+
+
+
+          {/* ── TWILIO SMS ───────────────────────────────────────────── */}
+          <IntegCard
+            icon="📱" title="SMS — get a Twilio number" badge="Optional"
+            status={creds.twilioPhone?.isSet}
+            desc={<>Leads can text a real phone number and the AI responds instantly by SMS. Each agent needs their own number (~$1/mo on Twilio).<br/><br/><strong>Steps:</strong><br/>1. Sign up at <a href="https://twilio.com" target="_blank" style={{color:'var(--sage)'}}>twilio.com</a> — free trial includes credit<br/>2. Buy a local number (search your area code)<br/>3. Go to that number → Messaging → Incoming messages webhook → set to:<br/><code style={{fontSize:'12px',background:'#f3f4f6',padding:'2px 6px',borderRadius:'4px',display:'inline-block',marginTop:'4px'}}>https://www.sayhelloleads.com/api/inbound-sms</code><br/>4. Paste your credentials below</>}
+            link="https://console.twilio.com" linkLabel="Open Twilio console →"
+          >
+            <CredField
+              label="Account SID" field="twilioSid" placeholder="AC..."
+              current={creds.twilioSid} saving={credsSaving.twilioSid} msg={credsMsg.twilioSid}
+              onSave={saveCred}
+            />
+            <CredField
+              label="Auth Token" field="twilioToken" placeholder="your auth token"
+              current={creds.twilioToken} saving={credsSaving.twilioToken} msg={credsMsg.twilioToken}
+              onSave={saveCred}
+            />
+            <CredField
+              label="Your Twilio phone number" field="twilioPhone" placeholder="+15131234567"
+              current={creds.twilioPhone} saving={credsSaving.twilioPhone} msg={credsMsg.twilioPhone}
+              onSave={saveCred}
+            />
+            {creds.twilioPhone?.isSet && (
+              <div style={{ marginTop: '.75rem', background: 'var(--sage-light)', borderRadius: '8px', padding: '.75rem 1rem', fontSize: '13px', color: 'var(--sage)' }}>
+                ✓ Leads who text <strong>{creds.twilioPhone.masked}</strong> will get an instant AI reply.
+              </div>
+            )}
+          </IntegCard>
 
           {/* ── CUSTOM SEND-FROM EMAIL ───────────────────────────────── */}
           <IntegCard
@@ -1428,46 +1436,30 @@ YOUR REPLY:
 const SETUP_STEPS = [
   {
     title: 'Deploy to Vercel',
-    body: `Push to GitHub then import at <a href="https://vercel.com" target="_blank">vercel.com</a>. Vercel auto-detects Next.js.
-<div class="code-block">git init && git add . && git commit -m "Initial Say HelloLeads"
-git remote add origin https://github.com/YOUR/sayhelloleads.git
-git push -u origin main</div>`,
+    body: `Push to GitHub then import at <a href="https://vercel.com" target="_blank">vercel.com</a>. Vercel auto-detects Next.js and deploys automatically on every push.`,
   },
   {
-    title: 'Set environment variables in Vercel',
-    body: `Vercel Dashboard → Your Project → Settings → Environment Variables. Add everything from <code>.env.example</code>.
-<br><br><strong>Required:</strong> <code>ANTHROPIC_API_KEY</code>, <code>NEXTAUTH_SECRET</code> (<code>openssl rand -base64 32</code>), <code>NEXTAUTH_URL</code>, <code>ADMIN_EMAIL</code>, <code>ADMIN_PASSWORD_HASH</code>
-<br><br>Generate a bcrypt hash for your password: <a href="https://bcrypt-generator.com" target="_blank">bcrypt-generator.com</a> (use rounds=10)`,
+    title: 'Add required environment variables',
+    body: `Vercel → Your Project → Settings → Environment Variables. Add these four:<br><br>
+<code>ANTHROPIC_API_KEY</code> — get at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys<br>
+<code>NEXTAUTH_SECRET</code> — run <code>openssl rand -base64 32</code> in your terminal<br>
+<code>NEXTAUTH_URL</code> — your live domain e.g. <code>https://www.sayhelloleads.com</code><br>
+<code>RESEND_API_KEY</code> — free at <a href="https://resend.com" target="_blank">resend.com</a> → API Keys (3,000 emails/mo free)<br><br>
+<strong>Note:</strong> <code>KV_REST_API_URL</code> and <code>KV_REST_API_TOKEN</code> are injected automatically in the next step.`,
   },
   {
-    title: 'Set up Vercel KV (lead persistence)',
-    body: `Vercel Dashboard → Storage → Create Database → KV. Copy the 4 env vars (<code>KV_URL</code>, <code>KV_REST_API_URL</code>, <code>KV_REST_API_TOKEN</code>, <code>KV_REST_API_READ_ONLY_TOKEN</code>) into your project environment variables. Leads will now persist across sessions.`,
+    title: 'Create Upstash Redis (lead + user storage)',
+    body: `Vercel Dashboard → Storage → Create Database → <strong>Upstash for Redis</strong>.<br>
+Vercel automatically injects <code>KV_REST_API_URL</code> and <code>KV_REST_API_TOKEN</code>. All lead data, agent accounts, and credentials are stored here.`,
   },
   {
-    title: 'Set up Twilio SMS',
-    body: `1. Sign up at <a href="https://twilio.com" target="_blank">twilio.com</a> (~$15 free credit)<br>
-2. Buy a local number (~$1/mo)<br>
-3. Set the number's <strong>Incoming Message Webhook</strong> to: <code>https://YOUR-APP.vercel.app/api/inbound-sms</code><br>
-4. Add <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_PHONE_NUMBER</code> to Vercel env vars<br>
-5. Texts to your Twilio number → AI responds within 60 seconds`,
-  },
-  {
-    title: 'Set up Postmark email (for Zillow/Homes.com leads)',
-    body: `1. Create account at <a href="https://postmarkapp.com" target="_blank">postmarkapp.com</a><br>
-2. Server → Inbound → get your <code>@inbound.postmarkapp.com</code> address<br>
-3. Set Inbound Webhook URL to: <code>https://YOUR-APP.vercel.app/api/inbound-email</code><br>
-4. In Zillow Premier Agent: Settings → Lead notifications → forward to your Postmark address<br>
-5. Add <code>POSTMARK_SERVER_TOKEN</code> to Vercel env vars`,
-  },
-  {
-    title: 'Connect your website contact form',
-    body: `Add a shared secret header for security, then POST to your Say HelloLeads endpoint:
-<div class="code-block">fetch('https://YOUR-APP.vercel.app/api/new-lead', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', 'x-webhook-secret': 'YOUR_SECRET' },
-  body: JSON.stringify({ fname, lname, email, phone, property, message, source: 'Website' })
-})</div>
-Add <code>WEBHOOK_SECRET</code> to your Vercel env vars.`,
+    title: 'Set up Postmark for email forwarding (one-time owner step)',
+    body: `<strong>You do this once — agents never touch Postmark directly.</strong><br><br>
+1. Create a free account at <a href="https://postmarkapp.com" target="_blank">postmarkapp.com</a><br>
+2. Create a Server → click the <strong>Inbound</strong> tab<br>
+3. Set <strong>Inbound Webhook URL</strong> to: <code>https://www.sayhelloleads.com/api/inbound-email</code><br>
+4. Click Save.<br><br>
+That's it. Each agent now automatically gets a unique forwarding address (<code>{agentId}@inbound.postmarkapp.com</code>) shown on their Integrations page. They paste it into Zillow/Homes.com — no further Postmark work needed by anyone.`,
   },
 ];
 
