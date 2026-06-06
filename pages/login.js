@@ -24,7 +24,11 @@ export default function LoginPage() {
 
     setLoading(false);
     if (res?.error) {
-      setError("That email and password combination doesn't match our records. Please try again or reset your password below.");
+      if (res.error === 'EMAIL_NOT_VERIFIED') {
+        setError('EMAIL_NOT_VERIFIED');
+      } else {
+        setError("That email and password combination doesn't match our records. Please try again or reset your password below.");
+      }
     } else {
       router.push('/');
     }
@@ -84,9 +88,19 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && (
+            {error && error !== 'EMAIL_NOT_VERIFIED' && (
               <div style={{ background: '#fde8e8', border: '1px solid #f5c6c6', borderRadius: '8px', padding: '.65rem .9rem', fontSize: '13px', color: 'var(--red)', marginBottom: '1rem' }}>
                 {error}
+              </div>
+            )}
+            {error === 'EMAIL_NOT_VERIFIED' && (
+              <div style={{ background: '#fff8ed', border: '1px solid #fde9b4', borderRadius: '8px', padding: '.85rem 1rem', fontSize: '13px', color: '#7a5c00', marginBottom: '1rem' }}>
+                <strong>Please verify your email first.</strong> Check your inbox for a verification link from Say HelloLeads.
+                <div style={{ marginTop: '.6rem' }}>
+                  <a href="/verify-email" style={{ color: '#3d6b4a', fontWeight: 600, textDecoration: 'none' }}>
+                    Resend verification email →
+                  </a>
+                </div>
               </div>
             )}
 
