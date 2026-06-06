@@ -95,6 +95,7 @@ export default async function handler(req, res) {
       // Notify on first message, again if score becomes HOT
       if (buyerMessageCount === 1 || scored.score === 'HOT') {
         const agentEmail = agent?.notifyEmail || agent?.email;
+        if (agent?.agentNotifyPhone) lead.agentNotifyPhone = agent.agentNotifyPhone;
         if (agentEmail) {
           await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey)
             .catch(e => console.error('chat notify error:', e.message));
