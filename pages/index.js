@@ -1216,10 +1216,17 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
             </div>
           </div>
 
-          {/* ── START HERE BANNER ──────────────────────────────── */}
-          <div style={{ background: 'var(--sage-light)', border: '1.5px solid var(--sage-mid)', borderRadius: '10px', padding: '.75rem 1.25rem', marginBottom: '1rem', fontSize: '13px', color: 'var(--sage)', fontWeight: '500' }}>
-            ⚡ Fastest setup — start here. Takes 2 minutes. No accounts needed.
+          {/* ── RECOMMENDED SECTION ───────────────────────────── */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.6rem' }}>
+              <span style={{ fontSize: '1.1rem' }}>🚀</span>
+              <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--black)' }}>Start here — Recommended</span>
+            </div>
+            <div style={{ background: 'var(--sage-light)', border: '1.5px solid var(--sage-mid)', borderRadius: '10px', padding: '.75rem 1.25rem', fontSize: '13px', color: 'var(--sage)', fontWeight: '500' }}>
+              ⚡ Takes 2 minutes per platform. No extra accounts or API keys needed — just a one-time email setting change.
+            </div>
           </div>
+
 
                     {/* ── ZILLOW / HOMES.COM / REALTOR.COM ─────────────────────── */}
           {(() => {
@@ -1431,7 +1438,16 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
             </>);
           })()}
 
-
+          {/* ── OPTIONAL SECTION ─────────────────────────────── */}
+          <div style={{ margin: '2rem 0 1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.6rem' }}>
+              <span style={{ fontSize: '1.1rem' }}>⚙️</span>
+              <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--black)' }}>Optional — connect even more lead sources</span>
+            </div>
+            <div style={{ background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: '10px', padding: '.75rem 1.25rem', fontSize: '13px', color: 'var(--muted)' }}>
+              Already set up the essentials? These add even more ways for leads to find you — connect whichever ones you use.
+            </div>
+          </div>
 
           {/* ── TWILIO SMS ───────────────────────────────────────────── */}
           <IntegCard
