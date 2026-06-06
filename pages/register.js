@@ -38,7 +38,7 @@ export default function RegisterPage() {
 
     setLoading(false);
     if (login?.error) {
-      router.push('/login');
+      router.push('/verify-email');
     } else {
       router.push('/');
     }
