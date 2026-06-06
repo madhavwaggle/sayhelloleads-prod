@@ -54,7 +54,7 @@ export default function App() {
   }
   const [scoring, setScoring] = useState(false);
   const [demoLead, setDemoLead] = useState(null);
-  const [profile, setProfile] = useState({ name: '', agencyName: '', notifyEmail: '', phone: '', agentNotifyPhone: '', zillowDone: false, homesDone: false, realtorDone: false });
+  const [profile, setProfile] = useState({ name: '', agencyName: '', notifyEmail: '', phone: '', agentNotifyPhone: '', zillowDone: false, homesDone: false, realtorDone: false, redfinDone: false });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
   // Integration credentials
@@ -142,6 +142,7 @@ export default function App() {
           zillowDone:   !!(data.profile.zillowDone),
           homesDone:    !!(data.profile.homesDone),
           realtorDone:  !!(data.profile.realtorDone),
+          redfinDone:   !!(data.profile.redfinDone),
         });
       }
     } catch (e) { console.error('loadProfile error:', e); }
@@ -207,7 +208,7 @@ export default function App() {
       const c   = credsData.credentials || {};
       setChecklist({
         profile: !!(p.name && p.notifyEmail),
-        zillow:  !!(p.zillowDone || p.homesDone || p.realtorDone),
+        zillow:  !!(p.zillowDone || p.homesDone || p.realtorDone || p.redfinDone),
         sms:     !!(c.twilioSid?.isSet && c.twilioPhone?.isSet),
         website: !!(c.webhookSecret?.isSet),
       });
@@ -609,7 +610,7 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
           <div className="integration-bar">
             <h3>Works with every lead source <em>automatically</em></h3>
             <div className="integrations">
-              {['Zillow Premier Agent','Homes.com','Realtor.com','SMS / Text','Your Website','Zapier / Webhooks'].map(s => (
+              {['Zillow Premier Agent','Homes.com','Realtor.com','Redfin','SMS / Text','Your Website','Zapier / Webhooks'].map(s => (
                 <div className="integration-chip" key={s}><span className="dot-green" />{s}</div>
               ))}
             </div>
@@ -993,7 +994,7 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                   {[
                     { done: checklist.profile, label: 'Complete your profile',               dest: 'profile',       hint: 'Name + notification email' },
-                    { done: checklist.zillow,   label: 'Forward leads from Zillow, Homes.com, or Realtor.com', dest: 'integrations',  hint: '2-minute email setting' },
+                    { done: checklist.zillow,   label: 'Forward leads from Zillow, Homes.com, Realtor.com, or Redfin', dest: 'integrations',  hint: '2-minute email setting' },
                     { done: checklist.sms,      label: 'Connect Twilio for SMS replies',        dest: 'integrations',  hint: 'AI responds via text' },
                     { done: checklist.website,  label: 'Connect your website or Zapier',        dest: 'integrations',  hint: 'Optional — any lead source' },
                   ].map((item, i) => (
@@ -1325,6 +1326,66 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                   <label htmlFor="realtor-done" style={{ fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: profile['realtorDone'] ? 'var(--sage)' : 'var(--black)' }}>
                     {profile['realtorDone'] ? "✓ Done — forwarding is set up" : "Mark as done once you've added the forwarding address"}
                   </label>
+                </div>
+              </IntegCard>
+
+              <IntegCard icon="🏘️" title="Redfin" badge="Email forwarding" status={false}
+                desc="Forward Redfin lead notification emails to Say HelloLeads — same simple process as Zillow and Homes.com."
+                link="https://redfin.com/agents" linkLabel="Open Redfin Partner Dashboard →"
+              >
+                <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.8', marginBottom: '.5rem' }}>
+                  <strong style={{ color: 'var(--black)' }}>Steps:</strong><br/>
+                  1. Log into your Redfin Partner Dashboard<br/>
+                  2. Account → Notifications → Lead alert email<br/>
+                  3. Add your forwarding address as an additional recipient
+                </div>
+                <ForwardingAddress addr={inboundAddr} />
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+                  <input
+                    type="checkbox"
+                    id="redfin-done"
+                    checked={!!profile['redfinDone']}
+                    onChange={async e => {
+                      const val = e.target.checked;
+                      setProfile(p => ({ ...p, redfinDone: val }));
+                      await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ redfinDone: val }) });
+                      loadChecklist();
+                    }}
+                    style={{ width: '16px', height: '16px', accentColor: 'var(--sage)', cursor: 'pointer', flexShrink: 0 }}
+                  />
+                  <label htmlFor="redfin-done" style={{ fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: profile['redfinDone'] ? 'var(--sage)' : 'var(--black)' }}>
+                    {profile['redfinDone'] ? "✓ Done — forwarding is set up" : "Mark as done once you've added the forwarding address"}
+                  </label>
+                </div>
+              </IntegCard>
+
+              <IntegCard icon="📘" title="Facebook & Instagram Lead Ads" badge="Via Zapier" status={false}
+                desc="Capture leads directly from your Facebook and Instagram ad campaigns — no manual checking required."
+                link="https://zapier.com/apps/facebook-lead-ads/integrations" linkLabel="Open Zapier → Facebook Lead Ads →"
+              >
+                <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.8', marginBottom: '.5rem' }}>
+                  <strong style={{ color: 'var(--black)' }}>Steps:</strong><br/>
+                  1. Sign up at <a href="https://zapier.com" target="_blank" style={{ color: 'var(--sage)' }}>zapier.com</a> (free plan works)<br/>
+                  2. Create a new Zap → Trigger: <strong>Facebook Lead Ads → New Lead</strong><br/>
+                  3. Connect your Facebook ad account and select your lead form<br/>
+                  4. Action: <strong>Webhooks by Zapier → POST</strong><br/>
+                  5. Set the URL to:
+                </div>
+                <code style={{ fontSize: '12px', background: '#f3f4f6', padding: '4px 8px', borderRadius: '4px', display: 'block', marginBottom: '.75rem', wordBreak: 'break-all' }}>
+                  POST https://www.sayhelloleads.com/api/new-lead
+                </code>
+                <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.8', marginBottom: '.5rem' }}>
+                  6. Add this header:
+                </div>
+                <code style={{ fontSize: '12px', background: '#f3f4f6', padding: '4px 8px', borderRadius: '4px', display: 'block', marginBottom: '.75rem' }}>
+                  x-agent-id: {agentId || 'your-agent-id'}
+                </code>
+                <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.8', marginBottom: '.75rem' }}>
+                  7. Map your Facebook form fields to the body:<br/>
+                  <code style={{ fontSize: '11px' }}>fname, lname, email, phone, property, message</code> — set <code style={{ fontSize: '11px' }}>source</code> to <code style={{ fontSize: '11px' }}>Facebook</code>
+                </div>
+                <div style={{ background: 'var(--sage-light)', borderRadius: '8px', padding: '.75rem 1rem', fontSize: '13px', color: 'var(--sage)', fontWeight: '500' }}>
+                  ✓ Once live, every Facebook or Instagram lead form submission triggers an instant AI response and shows up in your dashboard automatically.
                 </div>
               </IntegCard>
 
