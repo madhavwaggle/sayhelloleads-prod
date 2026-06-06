@@ -1249,7 +1249,7 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                   3. Add your forwarding address as an <em>additional</em> recipient
                 </div>
                 <ForwardingAddress addr={inboundAddr} />
-                <div style={ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '.6rem' }>
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '.6rem' }}>
                   <input
                     type="checkbox"
                     id="zillow-done"
@@ -1260,9 +1260,9 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                       await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ zillowDone: val }) });
                       loadChecklist();
                     }}
-                    style={ width: '16px', height: '16px', accentColor: 'var(--sage)', cursor: 'pointer', flexShrink: 0 }
+                    style={{ width: '16px', height: '16px', accentColor: 'var(--sage)', cursor: 'pointer', flexShrink: 0 }}
                   />
-                  <label htmlFor="zillow-done" style={ fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: profile['zillowDone'] ? 'var(--sage)' : 'var(--black)' }>
+                  <label htmlFor="zillow-done" style={{ fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: profile['zillowDone'] ? 'var(--sage)' : 'var(--black)' }}>
                     {profile['zillowDone'] ? "✓ Done — forwarding is set up" : "Mark as done once you've added the forwarding address"}
                   </label>
                 </div>
@@ -1279,7 +1279,7 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                   3. Add your forwarding address as an additional recipient
                 </div>
                 <ForwardingAddress addr={inboundAddr} />
-                <div style={ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '.6rem' }>
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '.6rem' }}>
                   <input
                     type="checkbox"
                     id="homes-done"
@@ -1290,9 +1290,9 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                       await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ homesDone: val }) });
                       loadChecklist();
                     }}
-                    style={ width: '16px', height: '16px', accentColor: 'var(--sage)', cursor: 'pointer', flexShrink: 0 }
+                    style={{ width: '16px', height: '16px', accentColor: 'var(--sage)', cursor: 'pointer', flexShrink: 0 }}
                   />
-                  <label htmlFor="homes-done" style={ fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: profile['homesDone'] ? 'var(--sage)' : 'var(--black)' }>
+                  <label htmlFor="homes-done" style={{ fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: profile['homesDone'] ? 'var(--sage)' : 'var(--black)' }}>
                     {profile['homesDone'] ? "✓ Done — forwarding is set up" : "Mark as done once you've added the forwarding address"}
                   </label>
                 </div>
@@ -1309,7 +1309,7 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                   3. Add your forwarding address as an additional notification email
                 </div>
                 <ForwardingAddress addr={inboundAddr} />
-                <div style={ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '.6rem' }>
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '.6rem' }}>
                   <input
                     type="checkbox"
                     id="realtor-done"
@@ -1320,9 +1320,9 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                       await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ realtorDone: val }) });
                       loadChecklist();
                     }}
-                    style={ width: '16px', height: '16px', accentColor: 'var(--sage)', cursor: 'pointer', flexShrink: 0 }
+                    style={{ width: '16px', height: '16px', accentColor: 'var(--sage)', cursor: 'pointer', flexShrink: 0 }}
                   />
-                  <label htmlFor="realtor-done" style={ fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: profile['realtorDone'] ? 'var(--sage)' : 'var(--black)' }>
+                  <label htmlFor="realtor-done" style={{ fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: profile['realtorDone'] ? 'var(--sage)' : 'var(--black)' }}>
                     {profile['realtorDone'] ? "✓ Done — forwarding is set up" : "Mark as done once you've added the forwarding address"}
                   </label>
                 </div>
