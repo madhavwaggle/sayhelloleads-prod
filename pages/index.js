@@ -1414,27 +1414,6 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                 </div>
               </IntegCard>
 
-              <IntegCard icon="⚡" title="Your website or Zapier" badge="Any source"
-                desc="Connect any lead source via a simple webhook POST. Works with Zapier, your own contact form, or any CRM."
-                link="https://zapier.com" linkLabel="Open Zapier →"
-              >
-                <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.8', marginBottom: '.75rem' }}>
-                  <strong style={{ color: 'var(--black)' }}>Webhook URL:</strong><br/>
-                  <code style={{ fontSize: '12px', background: '#f3f4f6', padding: '3px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '4px', wordBreak: 'break-all' }}>
-                    POST https://www.sayhelloleads.com/api/new-lead
-                  </code><br/><br/>
-                  <strong style={{ color: 'var(--black)' }}>Required header:</strong><br/>
-                  <code style={{ fontSize: '12px', background: '#f3f4f6', padding: '3px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
-                    x-agent-id: {agentId || 'your-agent-id'}
-                  </code><br/><br/>
-                  Body fields: <code style={{ fontSize: '11px' }}>fname, lname, email, phone, property, message, source</code>
-                </div>
-                <CredField
-                  label="Webhook secret (optional — adds security)" field="webhookSecret" placeholder="any random string"
-                  current={creds.webhookSecret} saving={credsSaving.webhookSecret} msg={credsMsg.webhookSecret}
-                  onSave={saveCred}
-                />
-              </IntegCard>
             </>);
           })()}
 
@@ -1448,6 +1427,28 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
               Already set up the essentials? These add even more ways for leads to find you — connect whichever ones you use.
             </div>
           </div>
+
+          <IntegCard icon="⚡" title="Your website or Zapier" badge="Any source"
+            desc="Connect any lead source via a simple webhook POST. Works with Zapier, your own contact form, or any CRM."
+            link="https://zapier.com" linkLabel="Open Zapier →"
+          >
+            <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.8', marginBottom: '.75rem' }}>
+              <strong style={{ color: 'var(--black)' }}>Webhook URL:</strong><br/>
+              <code style={{ fontSize: '12px', background: '#f3f4f6', padding: '3px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '4px', wordBreak: 'break-all' }}>
+                POST https://www.sayhelloleads.com/api/new-lead
+              </code><br/><br/>
+              <strong style={{ color: 'var(--black)' }}>Required header:</strong><br/>
+              <code style={{ fontSize: '12px', background: '#f3f4f6', padding: '3px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
+                x-agent-id: {session?.user?.id || 'your-agent-id'}
+              </code><br/><br/>
+              Body fields: <code style={{ fontSize: '11px' }}>fname, lname, email, phone, property, message, source</code>
+            </div>
+            <CredField
+              label="Webhook secret (optional — adds security)" field="webhookSecret" placeholder="any random string"
+              current={creds.webhookSecret} saving={credsSaving.webhookSecret} msg={credsMsg.webhookSecret}
+              onSave={saveCred}
+            />
+          </IntegCard>
 
           {/* ── TWILIO SMS ───────────────────────────────────────────── */}
           <IntegCard
