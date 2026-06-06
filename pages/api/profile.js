@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PUT') {
-    const { name, agencyName, notifyEmail, phone, agentNotifyPhone, zillowDone, homesDone, realtorDone, redfinDone } = req.body || {};
+    const { name, agencyName, notifyEmail, phone, agentNotifyPhone, zillowDone, homesDone, realtorDone, redfinDone, facebookDone } = req.body || {};
     const allowed = {};
     if (name)                    allowed.name             = name.trim();
     if (agencyName !== undefined) allowed.agencyName      = agencyName.trim();
@@ -34,6 +34,7 @@ export default async function handler(req, res) {
     if (homesDone   !== undefined) allowed.homesDone      = !!homesDone;
     if (realtorDone !== undefined) allowed.realtorDone   = !!realtorDone;
     if (redfinDone  !== undefined) allowed.redfinDone    = !!redfinDone;
+    if (facebookDone !== undefined) allowed.facebookDone  = !!facebookDone;
 
     const updated = await updateUserProfile(userId, allowed);
     if (!updated) return res.status(404).json({ error: 'User not found' });
