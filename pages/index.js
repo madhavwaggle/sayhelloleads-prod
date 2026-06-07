@@ -709,11 +709,11 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
               <div className="section-label">Common questions</div>
               <div className="section-title">Straight answers.</div>
               {[
-                ['Does it sound like a bot?', 'No. The AI is trained to sound like a real person texting — warm, natural, and specific to the property the lead asked about. We hear this a lot: agents' leads think they're talking to their assistant.'],
+                ["Does it sound like a bot?", "No. The AI is trained to sound like a real person texting — warm, natural, and specific to the property the lead asked about. We hear this a lot: agents' leads think they're talking to their assistant."],
                 ["What happens when I'm available?", "The AI handles the first response and qualifies the lead. When a lead is HOT you get an instant alert with everything you need to take over the conversation. You decide when to step in."],
                 ["Do leads know it's AI?", "No — and that's intentional. The AI never identifies itself as a bot. It replies in your name and voice. Leads engage because it feels like a real person reaching out."],
                 ['Which lead sources does it work with?', 'Zillow, Homes.com, Realtor.com, Redfin, Facebook Lead Ads, SMS, your website contact form, and any source that can send an email or a webhook — including Zapier.'],
-                ['How long does setup take?', 'Under 5 minutes for most agents. You forward your Zillow (or Homes.com, Realtor.com) lead notification emails to your unique address and you're live. No developer needed.'],
+                ["How long does setup take?", "Under 5 minutes for most agents. You forward your Zillow (or Homes.com, Realtor.com) lead notification emails to your unique address and you're live. No developer needed."],
                 ["What if a lead asks a question the AI can't answer?", "If the AI doesn't know a specific detail — like a listing price or square footage — it says it'll confirm and follow up. It never invents answers."],
               ].map(([q, a], i) => (
                 <FAQItem key={i} question={q} answer={a} />
