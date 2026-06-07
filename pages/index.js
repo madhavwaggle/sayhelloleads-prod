@@ -555,7 +555,7 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
                   {[
                     ['🏆', 'First to reply wins', '78% of buyers choose the agent who responds first'],
                     ['⏱️', 'Speed drops fast', 'A 5-minute reply is 21× more effective than a 30-minute one'],
-                    ['😴', 'Leads don't wait', 'Most inquiries happen evenings and weekends — when you're offline'],
+                    ['😴', "Leads don't wait", "Most inquiries happen evenings and weekends — when you're offline"],
                   ].map(([icon, title, desc]) => (
                     <div key={title} style={{ display: 'flex', gap: '.75rem', alignItems: 'flex-start' }}>
                       <span style={{ fontSize: '1.1rem', marginTop: '.1rem' }}>{icon}</span>
@@ -623,8 +623,8 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
             <div className="steps">
               {[
                 ['1', 'Lead comes in — any source', 'Zillow, Homes.com, Realtor.com, a text, or your website. Any time, day or night.'],
-                ['2', 'AI responds in under 60s', 'A warm, human reply goes out immediately — written in your voice, referencing the exact property. Leads think they're texting your assistant.'],
-                ['3', 'Lead gets qualified', 'The AI has a natural back-and-forth — uncovering timeline, budget, pre-approval status, and motivation without ever feeling like a script.'],
+                ["2", "AI responds in under 60s", "A warm, human reply goes out immediately — written in your voice, referencing the exact property. Leads think they're texting your assistant."],
+                ["3", "Lead gets qualified", "The AI has a natural back-and-forth — uncovering timeline, budget, pre-approval status, and motivation without ever feeling like a script."],
                 ['4', 'You get the brief', '🔥 Hot leads trigger an instant alert with everything you need: who they are, what they want, and exactly what to say when you call.'],
               ].map(([n,h,p]) => (
                 <div className="step" key={n}><div className="step-num">{n}</div><h3>{h}</h3><p>{p}</p></div>
@@ -710,11 +710,11 @@ Continue qualifying (budget, timeline, pre-approval). Stay warm and brief (3 sen
               <div className="section-title">Straight answers.</div>
               {[
                 ['Does it sound like a bot?', 'No. The AI is trained to sound like a real person texting — warm, natural, and specific to the property the lead asked about. We hear this a lot: agents' leads think they're talking to their assistant.'],
-                ['What happens when I'm available?', 'The AI handles the first response and qualifies the lead. When a lead is HOT you get an instant alert with everything you need to take over the conversation. You decide when to step in.'],
-                ['Do leads know it's AI?', 'No — and that's intentional. The AI never identifies itself as a bot. It replies in your name and voice. Leads engage because it feels like a real person reaching out.'],
+                ["What happens when I'm available?", "The AI handles the first response and qualifies the lead. When a lead is HOT you get an instant alert with everything you need to take over the conversation. You decide when to step in."],
+                ["Do leads know it's AI?", "No — and that's intentional. The AI never identifies itself as a bot. It replies in your name and voice. Leads engage because it feels like a real person reaching out."],
                 ['Which lead sources does it work with?', 'Zillow, Homes.com, Realtor.com, Redfin, Facebook Lead Ads, SMS, your website contact form, and any source that can send an email or a webhook — including Zapier.'],
                 ['How long does setup take?', 'Under 5 minutes for most agents. You forward your Zillow (or Homes.com, Realtor.com) lead notification emails to your unique address and you're live. No developer needed.'],
-                ['What if a lead asks a question the AI can't answer?', 'If the AI doesn't know a specific detail — like a listing price or square footage — it says it'll confirm and follow up. It never invents answers.'],
+                ["What if a lead asks a question the AI can't answer?", "If the AI doesn't know a specific detail — like a listing price or square footage — it says it'll confirm and follow up. It never invents answers."],
               ].map(([q, a], i) => (
                 <FAQItem key={i} question={q} answer={a} />
               ))}
