@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const updated = await updateUser(session.user.id, { photoUrl });
+    const updated = await updateUserProfile(session.user.id, { photoUrl });
     if (!updated) return res.status(404).json({ error: 'User not found' });
     return res.status(200).json({ ok: true, photoUrl });
   } catch (e) {
