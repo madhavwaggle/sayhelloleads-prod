@@ -10,7 +10,7 @@ import { getUserById } from '../../../lib/users';
 import { getAgentConfig } from '../../../lib/agentConfig';
 import { buildConversationPrompt, buildScoringPrompt, parseScoreResponse } from '../../../lib/aiPrompts';
 import { processReply, fallbackReply, validateScore } from '../../../lib/guardrails';
-import { notifyAgentNewLead } from '../../../lib/notify';
+import { notifyAgentNewLead, notifyOwnerCapExceeded } from '../../../lib/notify';
 import Anthropic from '@anthropic-ai/sdk';
 import { getRedis } from '../../../lib/redis';
 
@@ -19,15 +19,18 @@ const AI_MONTHLY_CAP = 300;
 async function checkAndIncrementAICap(agentId) {
   try {
     const store = await getRedis();
-    if (!store) return true;
+    if (!store) return { allowed: true, firstExceedance: false };
     const month = new Date().toISOString().slice(0, 7);
     const key = `ai:usage:${agentId}:${month}`;
     const count = await store.incr(key);
     if (count === 1) await store.expire(key, 60 * 60 * 24 * 35);
-    return count <= AI_MONTHLY_CAP;
+    return {
+      allowed: count <= AI_MONTHLY_CAP,
+      firstExceedance: count === AI_MONTHLY_CAP + 1,
+    };
   } catch (e) {
     console.error('AI cap check error:', e.message);
-    return true;
+    return { allowed: true, firstExceedance: false };
   }
 }
 
@@ -51,12 +54,16 @@ export default async function handler(req, res) {
   const anthropic = new Anthropic({ apiKey: cfg.anthropicKey });
 
   // ── Monthly AI cap ─────────────────────────────────────────────────────
-  const withinCap = await checkAndIncrementAICap(lead.agentId);
+  const { allowed: withinCap, firstExceedance } = await checkAndIncrementAICap(lead.agentId);
   if (!withinCap) {
     console.warn(`[ai-cap] Agent ${lead.agentId} hit monthly cap on chat — saving lead without AI reply.`);
     lead.messages.push({ role: 'lead', text: message });
     lead.updatedAt = new Date().toISOString();
     await saveLead(lead);
+    if (firstExceedance) {
+      await notifyOwnerCapExceeded(agent || { id: lead.agentId })
+        .catch(e => console.error('[ai-cap] owner alert error:', e.message));
+    }
     return res.status(200).json({ reply: "Thanks for your message! I'll be in touch shortly." });
   }
 
