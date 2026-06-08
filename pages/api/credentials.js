@@ -13,6 +13,7 @@
 
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../lib/auth';
+import { getRedis } from '../../lib/redis';
 
 // anthropicKey and resendKey are owner-only (env vars) — agents cannot set them
 const FIELDS = [
@@ -20,14 +21,6 @@ const FIELDS = [
   'postmarkToken', 'emailFrom',
   'webhookSecret',
 ];
-
-async function getRedis() {
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-    const { Redis } = await import('@upstash/redis');
-    return new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN });
-  }
-  return null;
-}
 
 // In-memory fallback for local dev
 const memCreds = new Map();
