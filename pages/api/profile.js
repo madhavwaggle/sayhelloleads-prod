@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PUT') {
-    const { name, agencyName, notifyEmail, phone, agentNotifyPhone, zillowDone, homesDone, realtorDone, redfinDone, facebookDone } = req.body || {};
+    const { name, agencyName, notifyEmail, phone, agentNotifyPhone, photoUrl, zillowDone, homesDone, realtorDone, redfinDone, facebookDone } = req.body || {};
     const allowed = {};
     if (name)                    allowed.name             = name.trim();
     if (agencyName !== undefined) allowed.agencyName      = agencyName.trim();
