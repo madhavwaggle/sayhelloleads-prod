@@ -13,6 +13,25 @@ import { buildFirstResponsePrompt, buildScoringPrompt, parseScoreResponse } from
 import { processReply, fallbackReply, validateScore } from '../../lib/guardrails';
 import { v4 as uuidv4 } from 'uuid';
 import Anthropic from '@anthropic-ai/sdk';
+import { getRedis } from '../../lib/redis';
+import { notifyAgentNewLead } from '../../lib/notify';
+
+const AI_MONTHLY_CAP = 300; // per agent — raise once subscriptions are live
+
+async function checkAndIncrementAICap(agentId) {
+  try {
+    const store = await getRedis();
+    if (!store) return true; // no Redis in dev — allow
+    const month = new Date().toISOString().slice(0, 7); // e.g. "2026-06"
+    const key = `ai:usage:${agentId}:${month}`;
+    const count = await store.incr(key);
+    if (count === 1) await store.expire(key, 60 * 60 * 24 * 35); // auto-expire after ~35 days
+    return count <= AI_MONTHLY_CAP;
+  } catch (e) {
+    console.error('AI cap check error:', e.message);
+    return true; // fail open — don't block leads if Redis has issues
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -72,6 +91,21 @@ export async function triggerAIResponse(lead, agent, cfg) {
   const agencyName = agent?.agencyName || '';
   const anthropic  = new Anthropic({ apiKey: cfg.anthropicKey });
 
+  // ── Monthly AI cap ─────────────────────────────────────────────────────
+  const withinCap = await checkAndIncrementAICap(lead.agentId);
+  if (!withinCap) {
+    console.warn(`[ai-cap] Agent ${lead.agentId} has exceeded ${AI_MONTHLY_CAP} AI responses this month — saving lead and notifying agent without AI.`);
+    lead.score   = 'WARM';
+    lead.summary = `New lead from ${lead.fname || 'someone'} about ${lead.property}. AI limit reached for this month — follow up manually.`;
+    await saveLead(lead);
+    const agentEmail = agent?.notifyEmail || agent?.email;
+    if (agentEmail) {
+      await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey)
+        .catch(e => console.error('[ai-cap] notify error:', e.message));
+    }
+    return;
+  }
+
   try {
     // ── 1. First response ──────────────────────────────────────────────────
     const replyPrompt = buildFirstResponsePrompt({ agentName, agencyName, lead });
@@ -102,7 +136,7 @@ export async function triggerAIResponse(lead, agent, cfg) {
     // ── 2. Score ───────────────────────────────────────────────────────────
     const scorePrompt = buildScoringPrompt({ lead });
     const scoreResp = await anthropic.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model:      'claude-haiku-4-5-20251001', // Haiku is sufficient for structured JSON scoring
       max_tokens: 500,
       system:     scorePrompt.system,
       messages:   scorePrompt.messages,
