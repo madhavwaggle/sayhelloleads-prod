@@ -462,7 +462,7 @@ PROGRESSION — every reply should do ONE of:
 
 NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
     try {
-      const data = await callAPI('/api/chat', { system: systemPrompt, messages: newHistory });
+      const data = await callAPI('/api/chat', { system: conversationSystemPrompt, messages: newHistory });
       const reply = data.reply;
 
       // Scale typing delay to reply length — feels human
@@ -494,16 +494,18 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
     setScoring(true);
 
     const convo = (currentLead.messages || []).map(m => (m.role === 'ai' ? 'Assistant' : 'Lead') + ': ' + m.text).join('\n');
-    const scoreContent = 'Lead: ' + currentLead.fname + ' ' + currentLead.lname + '\nProperty: ' + currentLead.property + '\nSource: ' + currentLead.source + '\n\nConversation:\n' + convo + '\n\nRules: HOT = timeline within 60 days AND pre-approved or specific budget. WARM = interested but vague. COLD = browsing.\n\nRespond ONLY as valid JSON: {"score":"HOT","confidence":"high","signals":{"timeline":"30 days","budget":"$400k","preApproved":true,"alsoSelling":false,"motivation":"relocating","urgencyLevel":"high"},"summary":"2-sentence brief about the lead.","nextAction":"Specific recommended next step for the agent."}';
+    const messageCount = (currentLead.messages || []).filter(m => m.role === 'lead').length;
 
     try {
       const data = await callAPI('/api/chat', {
-        system: 'You are a real estate lead scoring expert. Respond ONLY with valid JSON, no markdown.',
-        messages: [{ role: 'user', content: scoreContent }],
+        system: 'You are a real estate lead scoring expert. Respond ONLY with valid JSON — no markdown, no backticks, no explanation.',
+        messages: [{ role: 'user', content: `Analyze this real estate lead.\n\nName: ${currentLead.fname} ${currentLead.lname}\nProperty: ${currentLead.property}\nSource: ${currentLead.source}\nMessages from lead: ${messageCount}\n\nConversation:\n${convo}\n\nSCORING RULES (strict):\nHOT = ANY: timeline ≤60 days, specific budget, pre-approved, cash buyer, asks to schedule showing, asks to make offer, urgency language\nWARM = Interested and responsive but timeline/budget unclear\nCOLD = Just browsing, no urgency, no budget, vague\n\nRespond with ONLY this JSON:\n{"score":"HOT"|"WARM"|"COLD","confidence":"high"|"medium"|"low","signals":{"timeline":"string or null","budget":"string or null","preApproved":true|false|null,"alsoSelling":true|false|null,"motivation":"string or null","urgencyLevel":"high"|"medium"|"low"},"summary":"2-sentence brief about who they are and what they want.","nextAction":"Specific recommended next step with timing."}` }],
         max_tokens: 400,
       });
       const clean = data.reply.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
+      const jsonStart = clean.indexOf('{');
+      const jsonEnd   = clean.lastIndexOf('}');
+      const parsed = JSON.parse(clean.slice(jsonStart, jsonEnd + 1));
       currentLead.score      = ['HOT','WARM','COLD'].includes(parsed.score) ? parsed.score : 'WARM';
       currentLead.confidence = parsed.confidence || 'medium';
       currentLead.signals    = parsed.signals    || {};
