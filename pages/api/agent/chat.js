@@ -10,7 +10,7 @@ import { getUserById } from '../../../lib/users';
 import { getAgentConfig } from '../../../lib/agentConfig';
 import { buildConversationPrompt, buildScoringPrompt, parseScoreResponse } from '../../../lib/aiPrompts';
 import { processReply, fallbackReply, validateScore } from '../../../lib/guardrails';
-import { notifyAgentNewLead, notifyOwnerCapExceeded } from '../../../lib/notify';
+import { notifyAgentNewLead } from '../../../lib/notify';
 import Anthropic from '@anthropic-ai/sdk';
 import { getRedis } from '../../../lib/redis';
 
@@ -19,18 +19,15 @@ const AI_MONTHLY_CAP = 300;
 async function checkAndIncrementAICap(agentId) {
   try {
     const store = await getRedis();
-    if (!store) return { allowed: true, firstExceedance: false };
+    if (!store) return true;
     const month = new Date().toISOString().slice(0, 7);
     const key = `ai:usage:${agentId}:${month}`;
     const count = await store.incr(key);
     if (count === 1) await store.expire(key, 60 * 60 * 24 * 35);
-    return {
-      allowed: count <= AI_MONTHLY_CAP,
-      firstExceedance: count === AI_MONTHLY_CAP + 1,
-    };
+    return count <= AI_MONTHLY_CAP;
   } catch (e) {
     console.error('AI cap check error:', e.message);
-    return { allowed: true, firstExceedance: false };
+    return true;
   }
 }
 
@@ -50,20 +47,17 @@ export default async function handler(req, res) {
     return res.status(200).json({ reply: "Thanks for that! I'll have someone reach out to you shortly." });
   }
 
-  const agentName = agent?.name || 'the agent';
+  // Use agent name — never fall back to agency name as that sounds impersonal
+  const agentName = (agent?.name && agent.name.trim()) ? agent.name.trim() : 'your agent';
   const anthropic = new Anthropic({ apiKey: cfg.anthropicKey });
 
   // ── Monthly AI cap ─────────────────────────────────────────────────────
-  const { allowed: withinCap, firstExceedance } = await checkAndIncrementAICap(lead.agentId);
+  const withinCap = await checkAndIncrementAICap(lead.agentId);
   if (!withinCap) {
     console.warn(`[ai-cap] Agent ${lead.agentId} hit monthly cap on chat — saving lead without AI reply.`);
     lead.messages.push({ role: 'lead', text: message });
     lead.updatedAt = new Date().toISOString();
     await saveLead(lead);
-    if (firstExceedance) {
-      await notifyOwnerCapExceeded(agent || { id: lead.agentId })
-        .catch(e => console.error('[ai-cap] owner alert error:', e.message));
-    }
     return res.status(200).json({ reply: "Thanks for your message! I'll be in touch shortly." });
   }
 
@@ -79,12 +73,23 @@ export default async function handler(req, res) {
 
   // Get AI reply
   const prompt = buildConversationPrompt({ agentName, lead, conversationHistory });
+
+  // Safety: if messages is empty after validation, Claude API will error
+  if (!prompt.messages || prompt.messages.length === 0) {
+    console.warn('[chat] empty message history after validation — using lead message directly');
+    prompt.messages = [{ role: 'user', content: message }];
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[chat] agentName:', agentName, '| lead:', leadId, '| messages:', prompt.messages?.length);
+  }
+
   const resp = await anthropic.messages.create({
     model:      'claude-sonnet-4-20250514',
     max_tokens: 250,
     system:     prompt.system,
     messages:   prompt.messages,
-  }).catch(() => null);
+  }).catch((e) => { console.error('[chat] Anthropic API error:', e.message, e.status); return null; });
 
   const rawReply = resp?.content?.[0]?.text || '';
   const { text: cleanedReply, safe, flags } = processReply(rawReply);
