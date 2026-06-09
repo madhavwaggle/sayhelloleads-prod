@@ -14,7 +14,7 @@ import { notifyAgentNewLead } from '../../../lib/notify';
 import Anthropic from '@anthropic-ai/sdk';
 import { getRedis } from '../../../lib/redis';
 
-const AI_MONTHLY_CAP = 300;
+const AI_MONTHLY_CAP = 100;
 
 async function checkAndIncrementAICap(agentId) {
   try {
