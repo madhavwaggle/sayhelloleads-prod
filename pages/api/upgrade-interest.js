@@ -75,7 +75,7 @@ async function notifyOwnerUpgradeInterest(agent) {
           <tr><td style="padding:7px 0;color:#6b6b6b;">Interested at</td><td style="padding:7px 0;">${new Date(agent.recordedAt).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</td></tr>
         </table>
         <div style="margin-top:24px;padding:14px 16px;background:#eef4f0;border-radius:8px;font-size:13px;color:#4a7c59;font-weight:500;">
-          💡 They clicked "I'm Interested" after hitting their 300 AI response cap. Strike while the iron is hot!
+          💡 They clicked "I'm Interested" after hitting their 100 AI response cap. Strike while the iron is hot!
         </div>
       </div>
     </div>`;
