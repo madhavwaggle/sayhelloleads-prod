@@ -84,7 +84,7 @@ async function notifyOwnerUpgradeInterest(agent) {
     const { Resend } = await import('resend');
     const resend = new Resend(apiKey);
     await resend.emails.send({
-      from:    'Say HelloLeads <onboarding@resend.dev>',
+      from:    `Say HelloLeads <${process.env.RESEND_FROM || 'onboarding@resend.dev'}>`,
       to:      OWNER_EMAIL,
       subject: `💰 Pro interest: ${agent.name} (${agent.email})`,
       html,
