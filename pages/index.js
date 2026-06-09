@@ -69,7 +69,7 @@ export default function App() {
   // Onboarding checklist
   const [checklist, setChecklist]   = useState({ profile: false, zillow: false, sms: false, website: false });
   // AI usage meter
-  const [aiUsage, setAiUsage]       = useState({ used: 0, cap: 300, month: '' });
+  const [aiUsage, setAiUsage]       = useState({ used: 0, cap: 100, month: '' });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeInterestSent, setUpgradeInterestSent] = useState(false);
   const [upgradeInterestLoading, setUpgradeInterestLoading] = useState(false);
@@ -272,7 +272,7 @@ export default function App() {
       const res = await fetch('/api/ai-usage');
       if (res.ok) {
         const data = await res.json();
-        setAiUsage({ used: data.used || 0, cap: data.cap || 300, month: data.month || '' });
+        setAiUsage({ used: data.used || 0, cap: data.cap || 100, month: data.month || '' });
       }
     } catch (e) { console.error('loadAiUsage:', e); }
   }
@@ -387,7 +387,7 @@ export default function App() {
 
       const newHistory = [...initHistory, { role: 'assistant', content: reply }];
       setConversationHistory(newHistory);
-      setChatMessages(prev => [...prev, { role: 'ai', name: session?.user?.name || 'Agent', text: reply }]);
+      setChatMessages(prev => [...prev, { role: 'ai', name: session?.user?.name || 'Anna Williams', text: reply }]);
       lead.messages.push({ role: 'ai', text: reply });
 
       // Send real SMS if requested
@@ -495,7 +495,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
       setIsTyping(false);
 
       setConversationHistory(prev => [...prev, { role: 'assistant', content: reply }]);
-      setChatMessages(prev => [...prev, { role: 'ai', name: session?.user?.name || 'Agent', text: reply }]);
+      setChatMessages(prev => [...prev, { role: 'ai', name: session?.user?.name || 'Anna Williams', text: reply }]);
 
       const finalLead = { ...updatedLead, messages: [...updatedLead.messages, { role: 'ai', text: reply }], updatedAt: new Date().toISOString() };
       setCurrentLead(finalLead);
@@ -569,7 +569,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
     })));
     setChatMessages(lead.messages.map(m => ({
       role: m.role,
-      name: m.role === 'ai' ? (session?.user?.name || 'Agent') : `${lead.fname} ${lead.lname}`,
+      name: m.role === 'ai' ? (session?.user?.name || 'Anna Williams') : `${lead.fname} ${lead.lname}`,
       text: m.text,
     })));
     setView('conversation');
@@ -1020,7 +1020,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
             ))}
             {isTyping && (
               <div className="typing">
-                <span style={{ fontSize: '11px', color: 'var(--sage)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', marginRight: '4px' }}>{session?.user?.name || 'Agent'}</span>
+                <span style={{ fontSize: '11px', color: 'var(--sage)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', marginRight: '4px' }}>{session?.user?.name || 'Anna Williams'}</span>
                 <div className="dot" /><div className="dot" /><div className="dot" />
               </div>
             )}
@@ -1462,7 +1462,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
                       <div className="detail-convo">
                         {(lead.messages || []).map((m, i) => (
                           <div key={i} className={`mini-msg ${m.role}`}>
-                            <div className="who">{m.role === 'ai' ? (session?.user?.name || 'Agent') : lead.fname}</div>
+                            <div className="who">{m.role === 'ai' ? (session?.user?.name || 'Anna Williams') : lead.fname}</div>
                             {m.text}
                           </div>
                         ))}
@@ -1628,7 +1628,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
             ) : null;
 
             return (<>
-              <IntegCard icon="🏠" title="Zillow Premier Agent" badge="Email forwarding" status={false}
+              <IntegCard icon="🏠" title="Zillow Premier Agent" badge="Email forwarding" status={!!profile.zillowDone}
                 desc="Forward your Zillow lead notification emails to Say HelloLeads — no API key needed, just a one-time setting change."
                 link="https://premieragent.zillow.com" linkLabel="Open Zillow Premier Agent →"
               >
@@ -1658,7 +1658,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
                 </div>
               </IntegCard>
 
-              <IntegCard icon="🏡" title="Homes.com" badge="Email forwarding" status={false}
+              <IntegCard icon="🏡" title="Homes.com" badge="Email forwarding" status={!!profile.homesDone}
                 desc="Same process — forward Homes.com lead emails to your unique address."
                 link="https://homes.com" linkLabel="Open Homes.com portal →"
               >
@@ -1688,7 +1688,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
                 </div>
               </IntegCard>
 
-              <IntegCard icon="🔑" title="Realtor.com" badge="Email forwarding" status={false}
+              <IntegCard icon="🔑" title="Realtor.com" badge="Email forwarding" status={!!profile.realtorDone}
                 desc="Forward Realtor.com lead alerts to your Say HelloLeads address."
                 link="https://realtorpro.realtor.com" linkLabel="Open Realtor.com Pro →"
               >
@@ -1718,7 +1718,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
                 </div>
               </IntegCard>
 
-              <IntegCard icon="🏘️" title="Redfin" badge="Email forwarding" status={false}
+              <IntegCard icon="🏘️" title="Redfin" badge="Email forwarding" status={!!profile.redfinDone}
                 desc="Forward Redfin lead notification emails to Say HelloLeads — same simple process as Zillow and Homes.com."
                 link="https://redfin.com/agents" linkLabel="Open Redfin Partner Dashboard →"
               >
@@ -1748,7 +1748,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
                 </div>
               </IntegCard>
 
-              <IntegCard icon="📘" title="Facebook & Instagram Ads" badge="Via Zapier" status={false}
+              <IntegCard icon="📘" title="Facebook & Instagram Ads" badge="Via Zapier" status={!!profile.facebookDone}
                 desc="Capture leads directly from your Facebook and Instagram ad campaigns — no manual checking required."
                 link="https://zapier.com/apps/facebook-lead-ads/integrations" linkLabel="Open Zapier → Facebook Lead Ads →"
               >
