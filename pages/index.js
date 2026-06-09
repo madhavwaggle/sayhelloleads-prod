@@ -405,12 +405,13 @@ export default function App() {
         } catch (e) { console.error('SMS error:', e); }
       }
 
-      // Save lead to DB
-      await callAPI('/api/leads', lead);
+      // Save lead separately — never let a failed save pollute the chat UI
+      callAPI('/api/leads', lead).catch(e => console.error('Lead save error (submitLead):', e));
       setCurrentLead({ ...lead });
     } catch (e) {
+      // Only fires if the AI API call itself fails
+      console.error('submitLead AI error:', e);
       setIsTyping(false);
-      setChatMessages(prev => [...prev, { role: 'ai', name: session?.user?.name || 'Agent', text: "Thanks for reaching out! Tell me more — what's your timeline for moving?" }]);
     }
     setSubmitting(false);
   }
@@ -498,7 +499,9 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
 
       const finalLead = { ...updatedLead, messages: [...updatedLead.messages, { role: 'ai', text: reply }], updatedAt: new Date().toISOString() };
       setCurrentLead(finalLead);
-      await callAPI('/api/leads', finalLead);
+
+      // Save lead separately — never let a failed save pollute the chat UI
+      callAPI('/api/leads', finalLead).catch(e => console.error('Lead save error:', e));
 
       if (finalLead.smsSent && finalLead.phone) {
         fetch('/api/send-sms', {
@@ -508,8 +511,10 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
         }).catch(() => {});
       }
     } catch (e) {
+      // Only fires if the AI API call itself fails — not for save errors
+      console.error('sendReply AI error:', e);
       setIsTyping(false);
-      setChatMessages(prev => [...prev, { role: 'ai', name: session?.user?.name || 'Agent', text: "Let me look into that — can I get your best callback number?" }]);
+      // Don't show a fake message — just clear the typing indicator silently
     }
   }
 
