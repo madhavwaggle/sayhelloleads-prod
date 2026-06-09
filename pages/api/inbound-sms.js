@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     // ── 1. SMS reply ─────────────────────────────────────────────────────────
     const smsPrompt = buildSMSPrompt({ agentName, lead, history });
     const resp = await anthropic.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model:      'claude-sonnet-4-6',
       max_tokens: 160,
       system:     smsPrompt.system,
       messages:   smsPrompt.messages,
