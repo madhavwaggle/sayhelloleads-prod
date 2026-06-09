@@ -6,7 +6,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../lib/auth';
 import { getRedis } from '../../lib/redis';
 
-export const AI_MONTHLY_CAP = 300;
+export const AI_MONTHLY_CAP = 100;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
