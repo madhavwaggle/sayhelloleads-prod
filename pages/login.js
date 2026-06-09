@@ -30,7 +30,8 @@ export default function LoginPage() {
         setError("That email and password combination doesn't match our records. Please try again or reset your password below.");
       }
     } else {
-      router.push('/');
+      const isNew = query?.new === '1';
+      router.push(isNew ? '/?view=dashboard&welcome=1' : '/?view=dashboard');
     }
   }
 
