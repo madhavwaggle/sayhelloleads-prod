@@ -77,7 +77,7 @@ export default function RegisterPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '1rem' }}>
               <div>
                 <label>First &amp; last name</label>
-                <input value={form.name} onChange={set('name')} required placeholder="Maria Chen" />
+                <input value={form.name} onChange={set('name')} required placeholder="Maria Chen" autoComplete="name" />
               </div>
               <div>
                 <label>Agency name <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
@@ -87,12 +87,12 @@ export default function RegisterPage() {
 
             <div style={{ marginBottom: '1rem' }}>
               <label>Email</label>
-              <input type="email" value={form.email} onChange={set('email')} required placeholder="maria@yourrealty.com" />
+              <input type="email" value={form.email} onChange={set('email')} required placeholder="maria@yourrealty.com" autoComplete="email" />
             </div>
 
             <div style={{ marginBottom: '1.25rem' }}>
               <label>Password <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(min 8 chars)</span></label>
-              <input type="password" value={form.password} onChange={set('password')} required minLength={8} placeholder="••••••••" />
+              <input type="password" value={form.password} onChange={set('password')} required minLength={8} placeholder="••••••••" autoComplete="new-password" />
             </div>
 
             {error && (
