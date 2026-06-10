@@ -20,7 +20,7 @@ export default function Footer({ onHowItWorks }) {
         margin: '0 auto',
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '2.5rem',
+        gap: '2rem',
         marginBottom: '2.5rem',
       }}>
 
