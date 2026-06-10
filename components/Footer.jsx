@@ -35,7 +35,7 @@ export default function Footer({ onHowItWorks }) {
         </div>
 
         {/* ── Column 2: Product ── */}
-        <div style={{ background: 'transparent' }}>
+        <div style={{ background: 'inherit', padding: 0, boxShadow: 'none', border: 'none' }}>
           <div style={{ fontSize: '11px', fontWeight: '600', color: '#4a6741', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '.85rem' }}>
             Product
           </div>
