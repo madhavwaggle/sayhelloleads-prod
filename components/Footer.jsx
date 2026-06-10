@@ -20,7 +20,7 @@ export default function Footer({ onHowItWorks }) {
         margin: '0 auto',
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '2rem',
+        gap: '2.5rem',
         marginBottom: '2.5rem',
       }}>
 
@@ -42,7 +42,10 @@ export default function Footer({ onHowItWorks }) {
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
             <FooterLink href="/">Home</FooterLink>
             <FooterLink href="/">How it works</FooterLink>
-            <FooterLink href="/register">Sign up free</FooterLink>
+            {onHowItWorks
+              ? <button onClick={onHowItWorks} style={linkBtnStyle}>How it works</button>
+              : <FooterLink href="/register">Sign up free</FooterLink>
+            }  
             <FooterLink href="/login">Sign in</FooterLink>
           </nav>
         </div>
