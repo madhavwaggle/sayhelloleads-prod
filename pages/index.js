@@ -601,6 +601,18 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+        <!-- Open Graph Meta Tags -->
+            <meta property="og:title" content="Say HelloLeads — Respond to every lead in 60 seconds">
+            <meta property="og:description" content="Leads respond because they think they're texting you">
+            <meta property="og:image" content="https://sayhelloleads.com/preview.png">
+            <meta property="og:url" content="https://sayhelloleads.com">
+            <meta property="og:type" content="website">
+            
+            <!-- Twitter (also used by iMessage sometimes) -->
+            <meta name="twitter:card" content="summary_large_image">
+            <meta name="twitter:title" content="Say HelloLeads — Respond to every lead in 60 seconds">
+            <meta name="twitter:description" content="Leads respond because they think they're texting you.">
+            <meta name="twitter:image" content="https://sayhelloleads.com/preview.png">
       </Head>
 
       <style jsx global>{GLOBAL_CSS}</style>
@@ -700,7 +712,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
           <div style={{ background: 'var(--black)', color: 'var(--white)', padding: '1.1rem 2rem', textAlign: 'center', fontSize: '14px' }}>
             <span style={{ opacity: .7, marginRight: '.5rem' }}>💬</span>
             <strong>Sounds like you, not a bot.</strong>
-            <span style={{ color: 'rgba(255,255,255,.6)', marginLeft: '.75rem' }}>Leads respond because they think they're texting your assistant — not talking to software.</span>
+            <span style={{ color: 'rgba(255,255,255,.6)', marginLeft: '.75rem' }}>Leads respond because they think they're texting you — not talking to a chatbot.</span>
           </div>
 
           {/* ── PAIN STATS ──────────────────────────────────────────── */}
