@@ -904,27 +904,135 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
               <div className="section-title" style={{ margin: '0 auto 2rem' }}>Simple, straightforward.</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                 {[
-                  { name: 'Solo Agent', price: '$79', period: '/mo', features: ['1 agent', 'Unlimited leads', 'AI responses + scoring', 'Email alerts', 'Zillow + SMS + Website'], highlight: false },
-                  { name: 'Team', price: '$299', period: '/mo', features: ['Up to 5 agents', 'Everything in Solo', 'Team dashboard', 'Priority support', 'Onboarding call'], highlight: true },
-                  { name: 'Brokerage', price: '$999', period: '/mo', features: ['Up to 20 agents', 'Everything in Team', 'Custom branding', 'API access', 'Dedicated support'], highlight: false },
+                  { 
+                    name: 'Solo Agent', 
+                    price: '$79', 
+                    period: '/mo', 
+                    features: ['1 agent', 'Unlimited leads', 'AI responses + scoring', 'Email alerts', 'Zillow + SMS + Website'], 
+                    highlight: true,
+                    comingSoon: false
+                  },
+                  { 
+                    name: 'Team', 
+                    price: '$299', 
+                    period: '/mo', 
+                    features: ['Up to 5 agents', 'Everything in Solo', 'Team dashboard', 'Priority support', 'Onboarding call'], 
+                    highlight: false,
+                    comingSoon: true
+                  },
+                  { 
+                    name: 'Brokerage', 
+                    price: '$999', 
+                    period: '/mo', 
+                    features: ['Up to 20 agents', 'Everything in Team', 'Custom branding', 'API access', 'Dedicated support'], 
+                    highlight: false,
+                    comingSoon: true
+                  },
                 ].map(plan => (
                   <div key={plan.name} style={{
                     background: plan.highlight ? 'var(--sage)' : 'var(--white)',
                     border: `2px solid ${plan.highlight ? 'var(--sage)' : 'var(--border)'}`,
-                    borderRadius: '16px', padding: '1.75rem',
+                    borderRadius: '16px',
+                    padding: '1.75rem',
                     color: plan.highlight ? '#fff' : 'var(--black)',
                     position: 'relative',
+                    opacity: plan.comingSoon ? 0.75 : 1,
+                    transform: plan.highlight ? 'scale(1.03)' : 'scale(1)',
+                    transition: 'all 0.2s ease'
                   }}>
-                    {plan.highlight && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--amber)', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '3px 12px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '.05em', whiteSpace: 'nowrap' }}>Most popular</div>}
-                    <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '.5rem', opacity: plan.highlight ? .85 : 1 }}>{plan.name}</div>
-                    <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: '2.2rem', lineHeight: '1', marginBottom: '.2rem' }}>{plan.price}<span style={{ fontSize: '14px', fontWeight: '400' }}>{plan.period}</span></div>
-                    <div style={{ height: '1px', background: plan.highlight ? 'rgba(255,255,255,.2)' : 'var(--border)', margin: '1rem 0' }} />
-                    {plan.features.map(f => <div key={f} style={{ fontSize: '13px', marginBottom: '.4rem', opacity: plan.highlight ? .9 : .85 }}>✓ {f}</div>)}
+                
+                    {/* BADGES */}
+                    {plan.highlight && !plan.comingSoon && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'var(--amber)',
+                        color: '#fff',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        padding: '3px 12px',
+                        borderRadius: '20px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '.05em'
+                      }}>
+                        Most popular
+                      </div>
+                    )}
+                
+                    {plan.comingSoon && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: '#999',
+                        color: '#fff',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        padding: '3px 12px',
+                        borderRadius: '20px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '.05em'
+                      }}>
+                        Coming soon
+                      </div>
+                    )}
+                
+                    {/* NAME */}
+                    <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '.5rem', opacity: plan.highlight ? .9 : 1 }}>
+                      {plan.name}
+                    </div>
+                
+                    {/* PRICE */}
+                    <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: '2.2rem', lineHeight: '1', marginBottom: '.2rem' }}>
+                      {plan.price}
+                      <span style={{ fontSize: '14px', fontWeight: '400' }}>{plan.period}</span>
+                    </div>
+                
+                    <div style={{
+                      height: '1px',
+                      background: plan.highlight ? 'rgba(255,255,255,.2)' : 'var(--border)',
+                      margin: '1rem 0'
+                    }} />
+                
+                    {/* FEATURES */}
+                    {plan.features.map(f => (
+                      <div key={f} style={{ fontSize: '13px', marginBottom: '.4rem', opacity: plan.highlight ? .9 : .85 }}>
+                        ✓ {f}
+                      </div>
+                    ))}
+                
+                    {/* BUTTON */}
                     <button
-                      onClick={() => router.push('/register')}
-                      style={{ width: '100%', marginTop: '1.25rem', background: plan.highlight ? '#fff' : 'var(--sage)', color: plan.highlight ? 'var(--sage)' : '#fff', border: 'none', borderRadius: '8px', padding: '.7rem', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", fontWeight: '600', cursor: 'pointer' }}
+                      disabled={plan.comingSoon}
+                      onClick={() => {
+                        if (plan.comingSoon) {
+                          router.push(`/waitlist?plan=${plan.name.toLowerCase()}`)
+                        } else {
+                          router.push('/register')
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        marginTop: '1.25rem',
+                        background: plan.comingSoon
+                          ? '#e5e5e5'
+                          : (plan.highlight ? '#fff' : 'var(--sage)'),
+                        color: plan.comingSoon
+                          ? '#888'
+                          : (plan.highlight ? 'var(--sage)' : '#fff'),
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '.7rem',
+                        fontSize: '14px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: '600',
+                        cursor: plan.comingSoon ? 'not-allowed' : 'pointer'
+                      }}
                     >
-                      Get started →
+                      {plan.comingSoon ? 'Join waitlist' : 'Get started →'}
                     </button>
                   </div>
                 ))}
