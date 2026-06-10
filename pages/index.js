@@ -902,6 +902,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
             <div style={{ maxWidth: '720px', margin: '0 auto', textAlign: 'center' }}>
               <div className="section-label">Pricing</div>
               <div className="section-title" style={{ margin: '0 auto 2rem' }}>Simple, straightforward.</div>
+              <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '2rem' }}>Start with Solo. Team & Brokerage plans launching soon.</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                 {[
                   { 
