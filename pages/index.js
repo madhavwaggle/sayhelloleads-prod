@@ -599,6 +599,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
       <Head>
         <title>Say HelloLeads — AI Lead Response</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="description" content="Leads respond because they think they're texting you — not talking to a chatbot." />
         <meta property="og:title" content="Say HelloLeads — Respond to every lead in 60 seconds" />
         <meta property="og:description" content="Leads respond because they think they're texting you" />
         <meta property="og:image" content="https://sayhelloleads.com/preview.png" />
