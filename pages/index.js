@@ -958,7 +958,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
                         textTransform: 'uppercase',
                         letterSpacing: '.05em'
                       }}>
-                        Most popular
+                        Start Here
                       </div>
                     )}
                 
