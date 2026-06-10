@@ -44,8 +44,9 @@ export default function Footer({ onHowItWorks }) {
             <FooterLink href="/">How it works</FooterLink>
             {onHowItWorks
               ? <button onClick={onHowItWorks} style={linkBtnStyle}>How it works</button>
-              : <FooterLink href="/register">Sign up free</FooterLink>
+              : <FooterLink href="/">How it works</FooterLink>
             }  
+            <FooterLink href="/register">Sign up free</FooterLink>
             <FooterLink href="/login">Sign in</FooterLink>
           </nav>
         </div>
