@@ -56,7 +56,7 @@ export default function App() {
   }
   const [scoring, setScoring] = useState(false);
   const [demoLead, setDemoLead] = useState(null);
-  const [profile, setProfile] = useState({ name: '', agencyName: '', notifyEmail: '', phone: '', agentNotifyPhone: '', zillowDone: false, homesDone: false, realtorDone: false, redfinDone: false, facebookDone: false, photoUrl: '' });
+  const [profile, setProfile] = useState({ name: '', agencyName: '', notifyEmail: '', phone: '', agentNotifyPhone: '', zillowDone: false, homesDone: false, realtorDone: false, redfinDone: false, facebookDone: false, photoUrl: '', displayName: '' });
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoMsg, setPhotoMsg] = useState('');
   const photoInputRef = useRef(null);
@@ -185,6 +185,7 @@ export default function App() {
           redfinDone:   !!(data.profile.redfinDone),
           facebookDone: !!(data.profile.facebookDone),
           photoUrl:     data.profile.photoUrl || '',
+          displayName:  data.profile.displayName || '',
         });
       }
     } catch (e) { console.error('loadProfile error:', e); }
@@ -1814,6 +1815,23 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
                   <input className="setup-input" value={profile.agencyName} onChange={e => setProfile(p => ({ ...p, agencyName: e.target.value }))} placeholder="Hyde Park Realty" />
                 </div>
               </div>
+
+              {/* Display name — what leads see as the email sender */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>
+                  Your name as leads see it <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(sender name in their inbox)</span>
+                </label>
+                <input
+                  className="setup-input"
+                  value={profile.displayName}
+                  onChange={e => setProfile(p => ({ ...p, displayName: e.target.value }))}
+                  placeholder="Jane Smith"
+                  style={{ maxWidth: '320px' }}
+                />
+                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '.35rem' }}>
+                  Leads will see this as the sender — e.g. <strong>Jane Smith</strong> instead of a long email address. Keeps you out of spam.
+                </div>
+              </div>
               <div className="field-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '1.25rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '.35rem' }}>Notification email <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(where to send lead alerts)</span></label>
@@ -2177,26 +2195,6 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
             )}
           </IntegCard>
 
-          {/* ── CUSTOM SEND-FROM EMAIL ───────────────────────────────── */}
-          <IntegCard
-            icon="✍️" title="Custom send-from email" badge="Optional"
-            desc="Personalise what leads see in their inbox when they receive an AI reply. By default it comes from noreply@sayhelloleads.com."
-          >
-            <div style={{ background: '#eef4f0', border: '1px solid var(--sage-mid)', borderRadius: '8px', padding: '.85rem 1rem', marginBottom: '1rem', fontSize: '13px', lineHeight: '1.6' }}>
-              <div style={{ fontWeight: '600', marginBottom: '.3rem' }}>✅ Recommended</div>
-              Use your name with a Say HelloLeads address — leads see your name and delivery is guaranteed.<br />
-              <code style={{ background: 'rgba(0,0,0,.06)', padding: '.1rem .4rem', borderRadius: '4px', fontSize: '12px' }}>Jane Smith &lt;jane@sayhelloleads.com&gt;</code>
-            </div>
-            <div style={{ background: '#fdf3e7', border: '1px solid #e8c99a', borderRadius: '8px', padding: '.85rem 1rem', marginBottom: '1rem', fontSize: '13px', lineHeight: '1.6' }}>
-              <div style={{ fontWeight: '600', marginBottom: '.3rem' }}>⚠️ Using your own email address?</div>
-              If you enter something like <code style={{ background: 'rgba(0,0,0,.06)', padding: '.1rem .4rem', borderRadius: '4px', fontSize: '12px' }}>jane@hydeparkrealty.com</code>, this requires a technical setup on your domain first. Without it, your emails may go to spam or not arrive at all. <strong>Contact us and we'll get it sorted for you.</strong>
-            </div>
-            <CredField
-              label="From name & email" field="emailFrom" placeholder="Jane Smith <jane@sayhelloleads.com>"
-              current={creds.emailFrom} saving={credsSaving.emailFrom} msg={credsMsg.emailFrom}
-              onSave={saveCred}
-            />
-          </IntegCard>
         </section>
       )}
 
