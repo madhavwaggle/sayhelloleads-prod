@@ -16,6 +16,10 @@ import { saveLead, findLeadByContact } from '../../lib/db';
 import { getUserById } from '../../lib/users';
 import { getAgentConfig } from '../../lib/agentConfig';
 import { triggerAIResponse } from './new-lead';
+import { buildScoringPrompt, parseScoreResponse } from '../../lib/aiPrompts';
+import { validateScore } from '../../lib/guardrails';
+import { detectCallIntent, notifyAgentCallRequest } from '../../lib/notify';
+import Anthropic from '@anthropic-ai/sdk';
 import { v4 as uuidv4 } from 'uuid';
 
 export default async function handler(req, res) {
@@ -75,7 +79,10 @@ export default async function handler(req, res) {
 
   let lead;
   if (existing) {
-    const replyText = parsed.messages?.[0]?.text || textBody?.trim()?.slice(0, 500) || '';
+    // Strip quoted reply thread before saving — email clients append the
+    // original message thread which we don't want in the conversation.
+    const rawReply = parsed.messages?.[0]?.text || textBody?.trim() || '';
+    const replyText = stripQuotedEmailThread(rawReply).slice(0, 500);
     if (replyText) {
       existing.messages = [...(existing.messages || []), { role: 'lead', text: replyText }];
       existing.updatedAt = new Date().toISOString();
@@ -91,7 +98,49 @@ export default async function handler(req, res) {
 
   await saveLead(lead);
 
-  // triggerAIResponse handles AI reply, guardrails, scoring, SMS/email, and agent notification
+  // ── For replies to existing leads: re-score + call intent + AI reply ──────
+  if (existing) {
+    try {
+      if (cfg.anthropicKey) {
+        const anthropic = new Anthropic({ apiKey: cfg.anthropicKey });
+        // Re-score with updated conversation
+        const scorePrompt = buildScoringPrompt({ lead });
+        const scoreResp = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 500,
+          system: scorePrompt.system,
+          messages: scorePrompt.messages,
+        });
+        const scored = parseScoreResponse(scoreResp.content?.[0]?.text);
+        if (validateScore(scored)) {
+          lead.score      = scored.score;
+          lead.confidence = scored.confidence;
+          lead.signals    = scored.signals;
+          lead.summary    = scored.summary || lead.summary;
+          lead.nextAction = scored.nextAction || lead.nextAction;
+          await saveLead(lead);
+        }
+        // Check for call intent — if detected, notify agent urgently
+        const lastLeadMsg = lead.messages.filter(m => m.role === 'lead').slice(-1)[0]?.text || '';
+        if (detectCallIntent(lastLeadMsg)) {
+          const agentEmail = agent?.notifyEmail || agent?.email;
+          const agentName  = agent?.name || 'Agent';
+          if (agentEmail) {
+            await notifyAgentCallRequest(lead, agentEmail, agentName, cfg.resendKey)
+              .catch(e => console.error('[inbound-email] call alert error:', e.message));
+          }
+        }
+      }
+      // Continue the AI conversation
+      await Promise.race([
+        triggerAIResponse(lead, agent, cfg),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 25000)),
+      ]);
+    } catch (e) { console.error('[inbound-email] reply AI error:', e.message); }
+    return res.status(200).json({ id: lead.id, message: 'Reply processed' });
+  }
+
+  // ── New lead: full AI pipeline ────────────────────────────────────────────
   try {
     await Promise.race([
       triggerAIResponse(lead, agent, cfg),
@@ -137,9 +186,35 @@ function extractAgentId(toAddress) {
 }
 
 /**
- * Sanitize a parsed field before embedding in AI prompts.
- * Lead emails are untrusted — strip prompt-injection characters.
+ * Strip quoted email thread content from a reply body.
+ * Removes: "On [date], [name] wrote:", "-----Original Message-----",
+ * "> quoted lines", and everything after them.
  */
+function stripQuotedEmailThread(text) {
+  if (!text) return '';
+  // Split into lines and drop everything from the first quote marker onwards
+  const lines = text.split('\n');
+  const cutPatterns = [
+    /^On .+wrote:/i,
+    /^[-_]{3,}/,
+    /^From:/i,
+    /^Sent:/i,
+    /^To:/i,
+    /^Subject:/i,
+    /^>{1}/,
+    /wrote:\s*$/i,
+    /^_{3,}/,
+  ];
+  let cutAt = lines.length;
+  for (let i = 0; i < lines.length; i++) {
+    if (cutPatterns.some(p => p.test(lines[i].trim()))) {
+      cutAt = i;
+      break;
+    }
+  }
+  return lines.slice(0, cutAt).join('\n').trim();
+}
+
 function sanitizeField(str, maxLen = 120) {
   if (!str || typeof str !== 'string') return '';
   return str
