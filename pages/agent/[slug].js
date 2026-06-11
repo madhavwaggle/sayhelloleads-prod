@@ -333,7 +333,7 @@ export default function AgentPage({ agent, notFound }) {
               {messages.map((m, i) => (
                 <div key={i} className={`msg ${m.role === 'ai' ? 'ai' : 'lead'}`}>
                   <div className="msg-label">{m.name}</div>
-                  {m.text}
+                  <MessageWithBookingButton text={m.text} />
                 </div>
               ))}
               {sending && (
@@ -378,4 +378,53 @@ export async function getServerSideProps({ params }) {
   } catch {
     return { props: { notFound: true, agent: null } };
   }
+}
+
+// ── Renders message text with Calendly URL as a tappable green button ─────────
+function MessageWithBookingButton({ text }) {
+  if (!text) return null;
+  // Detect any URL in the message
+  const urlPattern = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlPattern);
+  if (parts.length === 1) return <>{text}</>;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (urlPattern.test(part)) {
+          const isCalendly = part.includes('calendly.com');
+          return isCalendly ? (
+            <span key={i} style={{ display: 'block', marginTop: '.5rem' }}>
+              <a
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '.4rem',
+                  background: '#4a6741',
+                  color: '#fff',
+                  padding: '.55rem 1.1rem',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  textDecoration: 'none',
+                  boxShadow: '0 2px 8px rgba(74,103,65,.25)',
+                }}
+              >
+                📅 Book a showing →
+              </a>
+            </span>
+          ) : (
+            <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+              style={{ color: 'inherit', textDecoration: 'underline', wordBreak: 'break-all' }}>
+              {part}
+            </a>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
 }
