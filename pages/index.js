@@ -160,6 +160,14 @@ export default function App() {
     if (view === 'dashboard') loadAiUsage();
   }, [view]);
 
+  // Auto-refresh leads every 30 seconds while on dashboard so email/SMS
+  // replies from buyers appear without the agent needing to manually refresh
+  useEffect(() => {
+    if (view !== 'dashboard') return;
+    const interval = setInterval(() => loadLeads(), 30000);
+    return () => clearInterval(interval);
+  }, [view]);
+
   async function loadProfile() {
     try {
       const res = await fetch('/api/profile');
@@ -1625,7 +1633,12 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
 
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.75rem', marginBottom: '.75rem' }}>
-              <div className="dash-section-title" style={{ margin: 0 }}>Active leads</div>
+              <div className="dash-section-title" style={{ margin: 0 }}>
+                Active leads
+                <span style={{ marginLeft: '.6rem', fontSize: '10px', fontWeight: '600', color: '#4a6741', background: '#e8efe7', border: '1px solid #c5d9c2', borderRadius: '20px', padding: '2px 8px', verticalAlign: 'middle', letterSpacing: '.04em' }}>
+                  ● LIVE · refreshes every 30s
+                </span>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
                 <button
                   onClick={() => { setShowManualLead(true); setManualResult(null); setManualForm({ fname: '', lname: '', email: '', phone: '', property: '', note: '', source: 'Referral' }); }}
