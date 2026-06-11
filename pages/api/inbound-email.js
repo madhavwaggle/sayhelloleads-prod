@@ -67,18 +67,30 @@ export default async function handler(req, res) {
   }
 
   const cfg  = await getAgentConfig(agentId);
+
+  // ── Extract the sender's email directly from the From header ─────────────
+  // This is reliable for dedup — the From header is always the actual sender.
+  // Don't use body-parsed email for dedup as it can match quoted thread addresses.
+  const senderEmail = (fromEmail.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/) || [])[0]?.toLowerCase().trim() || '';
+
   const parsed = parseLeadEmail(fromEmail, subject, textBody, agentId);
 
-  if (!parsed.email && !parsed.phone) {
+  if (!parsed.email && !parsed.phone && !senderEmail) {
     console.log('[inbound-email] no contact info parsed from:', subject);
     return res.status(200).json({ message: 'ignored — not a lead email' });
   }
 
-  // ── Dedup: if buyer is replying to an existing conversation, append ───────
-  const existing = await findLeadByContact(agentId, { email: parsed.email, phone: parsed.phone });
+  // ── Dedup: check for existing lead using sender email first, then parsed ──
+  // Using senderEmail (From header) is more reliable than body-parsed email
+  // because the body may contain quoted thread addresses like leads@sayhelloleads.com
+  const existing = await findLeadByContact(agentId, {
+    email: senderEmail || parsed.email,
+    phone: parsed.phone,
+  });
 
   let lead;
   if (existing) {
+    console.log('[inbound-email] matched existing lead:', existing.id, '| sender:', senderEmail);
     // Strip quoted reply thread before saving — email clients append the
     // original message thread which we don't want in the conversation.
     const rawReply = parsed.messages?.[0]?.text || textBody?.trim() || '';
@@ -90,6 +102,7 @@ export default async function handler(req, res) {
     lead = existing;
     console.log('[inbound-email] reply appended to existing lead:', existing.id);
   } else {
+    console.log('[inbound-email] no existing lead found for sender:', senderEmail, '| parsed email:', parsed.email, '| phone:', parsed.phone, '— creating new lead');
     lead = parsed;
     lead.id        = uuidv4();
     lead.createdAt = new Date().toISOString();
