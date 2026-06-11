@@ -20,6 +20,7 @@ const FIELDS = [
   'twilioSid', 'twilioToken', 'twilioPhone',
   'postmarkToken', 'emailFrom',
   'webhookSecret',
+  'calendlyUrl',
 ];
 
 // In-memory fallback for local dev
