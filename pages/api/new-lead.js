@@ -115,7 +115,7 @@ export async function triggerAIResponse(lead, agent, cfg) {
 
   try {
     // ── 1. First response ──────────────────────────────────────────────────
-    const replyPrompt = buildFirstResponsePrompt({ agentName, agencyName, lead });
+    const replyPrompt = buildFirstResponsePrompt({ agentName, agencyName, lead, calendlyUrl: cfg.calendlyUrl || '' });
     const replyResp = await anthropic.messages.create({
       model:      'claude-sonnet-4-6',
       max_tokens: 250,
