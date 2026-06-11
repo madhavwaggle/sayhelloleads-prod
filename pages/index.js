@@ -1225,7 +1225,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
               ) : (
                 <div key={i} className={`msg ${msg.role === 'ai' ? 'ai' : 'lead'}`}>
                   <div className="msg-label">{msg.name}</div>
-                  {msg.text}
+                  <DemoMessageWithBooking text={msg.text} />
                 </div>
               )
             ))}
@@ -2104,6 +2104,25 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
             />
           </IntegCard>
 
+          {/* ── CALENDLY ─────────────────────────────────────────────── */}
+          <IntegCard
+            icon="📅" title="Calendly — automatic booking link" badge="Optional"
+            status={creds.calendlyUrl?.isSet}
+            desc={<>Once a lead's timeline and budget are confirmed, the AI naturally offers your Calendly link so they can book a showing directly — no back-and-forth on times needed.<br /><br /><strong>Without Calendly:</strong> the AI proposes 2–3 time slots in the conversation and notes the agreed time in the lead summary. Nothing breaks — this is purely additive.<br /><br /><strong>Steps:</strong><br />1. Sign up at <a href="https://calendly.com" target="_blank" style={{color:'var(--sage)'}}>calendly.com</a> — free plan is fine<br />2. Create an event type (e.g. "Property Showing — 30 min")<br />3. Copy your scheduling link and paste it below</>}
+            link="https://calendly.com" linkLabel="Open Calendly →"
+          >
+            <CredField
+              label="Your Calendly URL" field="calendlyUrl" placeholder="https://calendly.com/yourname/showing"
+              current={creds.calendlyUrl} saving={credsSaving.calendlyUrl} msg={credsMsg.calendlyUrl}
+              onSave={saveCred}
+            />
+            {creds.calendlyUrl?.isSet && (
+              <div style={{ marginTop: '.75rem', background: 'var(--sage-light)', borderRadius: '8px', padding: '.75rem 1rem', fontSize: '13px', color: 'var(--sage)' }}>
+                ✓ Once leads qualify, the AI will offer your booking link automatically. It also renders as a <strong>📅 Book a showing →</strong> button in the chat UI.
+              </div>
+            )}
+          </IntegCard>
+
           {/* ── TWILIO SMS ───────────────────────────────────────────── */}
           <IntegCard
             icon="📱" title="SMS — get a Twilio number" badge="Optional"
@@ -2328,6 +2347,34 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
 }
 
 // ─── HOW IT WORKS MODAL ───────────────────────────────────────────────────────
+
+// ── Renders demo chat messages with Calendly URL as a tappable button ────────
+function DemoMessageWithBooking({ text }) {
+  if (!text) return null;
+  const urlPattern = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlPattern);
+  if (parts.length === 1) return <>{text}</>;
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (urlPattern.test(part)) {
+          return part.includes('calendly.com') ? (
+            <span key={i} style={{ display: 'block', marginTop: '.5rem' }}>
+              <a href={part} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', background: '#4a6741', color: '#fff', padding: '.55rem 1.1rem', borderRadius: '8px', fontSize: '14px', fontWeight: '600', textDecoration: 'none' }}>
+                📅 Book a showing →
+              </a>
+            </span>
+          ) : (
+            <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+              style={{ color: 'inherit', textDecoration: 'underline', wordBreak: 'break-all' }}>{part}</a>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
 
 // ─── MANUAL LEAD RESULT — Option B approval UI ───────────────────────────────
 
