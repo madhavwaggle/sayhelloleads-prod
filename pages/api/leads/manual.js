@@ -119,12 +119,16 @@ ${scoreHint}`,
     lead.nextAction = 'Reach out personally to introduce yourself.';
   }
 
-  await saveLead(lead);
+  // Store the draft on the lead so the agent can access it from the lead card later
+  if (suggestedOutreach) {
+    lead.outreachDraft = suggestedOutreach;
+    await saveLead(lead);
+  }
 
   return res.status(200).json({
     lead,
     suggestedOutreach,
-    twilioReady,      // tells UI whether SMS button should be active
+    twilioReady,
     hasEmail: !!lead.email,
   });
 }
