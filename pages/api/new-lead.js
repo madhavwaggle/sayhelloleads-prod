@@ -184,6 +184,7 @@ export async function triggerAIResponse(lead, agent, cfg) {
         const { ServerClient } = await import('postmark');
         await new ServerClient(cfg.postmarkToken).sendEmail({
           From:     cfg.emailFrom || `${agentName} <noreply@sayhelloleads.com>`,
+          ReplyTo:  `${lead.agentId}@inbound.sayhelloleads.com`,
           To:       lead.email,
           Subject:  `Re: ${lead.property}`,
           TextBody: finalReply,
