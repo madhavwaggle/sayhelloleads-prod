@@ -7,7 +7,7 @@
 
 import { saveLead, getAllLeads } from '../../lib/db';
 import { getUserById } from '../../lib/users';
-import { notifyAgentNewLead, notifyOwnerCapExceeded } from '../../lib/notify';
+import { notifyAgentNewLead, notifyOwnerCapExceeded, detectCallIntent, notifyAgentCallRequest } from '../../lib/notify';
 import { getAgentConfig } from '../../lib/agentConfig';
 import { buildFirstResponsePrompt, buildScoringPrompt, parseScoreResponse } from '../../lib/aiPrompts';
 import { processReply, fallbackReply, validateScore } from '../../lib/guardrails';
@@ -200,6 +200,19 @@ export async function triggerAIResponse(lead, agent, cfg) {
     // ── 5. Notify agent ────────────────────────────────────────────────────
     const agentEmail = agent?.notifyEmail || agent?.email;
     if (agent?.agentNotifyPhone) lead.agentNotifyPhone = agent.agentNotifyPhone;
+
+    // Check call intent in any lead message — if detected, force HOT + urgent alert
+    const allLeadText = (lead.messages || []).filter(m => m.role === 'lead').map(m => m.text).join(' ');
+    if (detectCallIntent(allLeadText)) {
+      lead.score = 'HOT';
+      lead.confidence = 'high';
+      lead.nextAction = `${lead.fname || 'Lead'} asked to be called at ${lead.phone || 'their number'}. Call within the hour.`;
+      if (agentEmail) {
+        await notifyAgentCallRequest(lead, agentEmail, agentName, cfg.resendKey)
+          .catch(e => console.error('[new-lead] call alert error:', e.message));
+      }
+    }
+
     if (agentEmail) {
       lead.agentPhotoUrl = agent?.photoUrl || '';
       await notifyAgentNewLead(lead, agentEmail, agentName, cfg.resendKey)
