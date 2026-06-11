@@ -72,7 +72,7 @@ export default async function handler(req, res) {
   }));
 
   // Get AI reply
-  const prompt = buildConversationPrompt({ agentName, lead, conversationHistory });
+  const prompt = buildConversationPrompt({ agentName, lead, conversationHistory, calendlyUrl: cfg.calendlyUrl || '' });
 
   // Safety: if messages is empty after validation, Claude API will error
   if (!prompt.messages || prompt.messages.length === 0) {
