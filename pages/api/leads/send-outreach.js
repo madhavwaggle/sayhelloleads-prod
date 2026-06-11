@@ -57,8 +57,11 @@ export default async function handler(req, res) {
       if (cfg.postmarkToken) {
         const { ServerClient } = await import('postmark');
         const client = new ServerClient(cfg.postmarkToken);
+        // Extract display name — handles both "Jane Smith" and legacy "Jane Smith <abc@sayhelloleads.com>"
+        const displayName = cfg.displayName || agentName;
+        const inboundFrom = `${displayName} <${lead.agentId}@inbound.sayhelloleads.com>`;
         await client.sendEmail({
-          From:     cfg.emailFrom || `${agentName} <noreply@sayhelloleads.com>`,
+          From:     inboundFrom,
           ReplyTo:  `${lead.agentId}@inbound.sayhelloleads.com`,
           To:       lead.email,
           Subject:  lead.property ? `Re: ${lead.property}` : `Hi ${lead.fname} — following up`,
