@@ -83,6 +83,7 @@ export default function App() {
   const [manualForm, setManualForm]             = useState({ fname: '', lname: '', email: '', phone: '', property: '', note: '', source: 'Referral' });
   const [manualSubmitting, setManualSubmitting] = useState(false);
   const [manualResult, setManualResult]         = useState(null); // { lead, suggestedOutreach }
+  const [pendingOutreachLead, setPendingOutreachLead] = useState(null); // lead card → reopen outreach modal
   const [upgradeInterestLoading, setUpgradeInterestLoading] = useState(false);
   // Welcome banner — shown to new users arriving from email verification
   const [showWelcome, setShowWelcome] = useState(false);
@@ -1694,6 +1695,15 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
                         <span className="pill">{lead.source}</span>
                       </div>
                       <div className="detail-actions">
+                        {lead.outreachPending && lead.outreachDraft && (
+                          <button
+                            className="action-btn green"
+                            onClick={e => { e.stopPropagation(); setPendingOutreachLead(lead); }}
+                            style={{ background: '#e67e22', borderColor: '#e67e22' }}
+                          >
+                            ✉️ Send first message
+                          </button>
+                        )}
                         <button className="action-btn green" onClick={() => continueConvo(lead)}>💬 Continue conversation</button>
                         {lead.phone && (
                           <button className="action-btn" onClick={async () => {
@@ -2177,6 +2187,36 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
         </section>
       )}
 
+      {/* PENDING OUTREACH MODAL — reopened from lead card */}
+      {pendingOutreachLead && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={e => { if (e.target === e.currentTarget) setPendingOutreachLead(null); }}>
+          <div style={{ background: '#fff', borderRadius: '18px', padding: '1.75rem', maxWidth: '500px', width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <ManualLeadResult
+              result={{
+                lead:              pendingOutreachLead,
+                suggestedOutreach: pendingOutreachLead.outreachDraft || '',
+                twilioReady:       !!(pendingOutreachLead.phone),
+                hasEmail:          !!pendingOutreachLead.email,
+              }}
+              onSendOutreach={async (leadId, message, channel) => {
+                const res = await fetch('/api/leads/send-outreach', {
+                  method:  'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body:    JSON.stringify({ leadId, message, channel }),
+                });
+                const data = await res.json();
+                if (res.ok) loadLeads(); // refresh dashboard
+                return data;
+              }}
+              onAddAnother={() => { setPendingOutreachLead(null); setShowManualLead(true); setManualResult(null); setManualForm({ fname: '', lname: '', email: '', phone: '', property: '', note: '', source: 'Referral' }); }}
+              onDone={() => { setPendingOutreachLead(null); loadLeads(); }}
+              onGoToIntegrations={() => { setPendingOutreachLead(null); setView('integrations'); }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* HOW IT WORKS MODAL */}
       {howItWorksOpen && <HowItWorksModal onClose={() => setHowItWorksOpen(false)} />}
 
@@ -2240,7 +2280,12 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
 
                 <div style={{ marginBottom: '.75rem' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--muted)', marginBottom: '.3rem' }}>Property interested in</label>
-                  <input value={manualForm.property} onChange={e => setManualForm(f => ({...f, property: e.target.value}))} placeholder="412 Elm St, Hyde Park — or just an area" style={{ width: '100%', padding: '.6rem .9rem', border: '1.5px solid var(--border)', borderRadius: '8px', fontFamily: 'inherit', fontSize: '14px', outline: 'none' }} />
+                  <AddressAutocomplete
+                    value={manualForm.property}
+                    onChange={val => setManualForm(f => ({...f, property: val}))}
+                    placeholder="412 Elm St, Hyde Park — or just an area"
+                    style={{ width: '100%', padding: '.6rem .9rem', border: '1.5px solid var(--border)', borderRadius: '8px', fontFamily: 'inherit', fontSize: '14px', outline: 'none' }}
+                  />
                 </div>
 
                 <div style={{ marginBottom: '.75rem' }}>
