@@ -85,6 +85,7 @@ export default function App() {
   const [manualResult, setManualResult]         = useState(null); // { lead, suggestedOutreach }
   const [pendingOutreachLead, setPendingOutreachLead] = useState(null); // lead card → reopen outreach modal
   const [upgradeInterestLoading, setUpgradeInterestLoading] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   // Derived — true only when all three Twilio fields are saved
   const twilioConfigured = !!(creds.twilioSid?.isSet && creds.twilioToken?.isSet && creds.twilioPhone?.isSet);
   const chatRef = useRef(null);
