@@ -109,7 +109,8 @@ export default async function handler(req, res) {
   lead.messages.push({ role: 'ai', text: reply });
 
   // ── Call intent detection — force HOT + urgent agent alert ─────────────
-  if (detectCallIntent(message)) {
+  const callIntentTriggered = detectCallIntent(message);
+  if (callIntentTriggered) {
     lead.score = 'HOT';
     lead.confidence = 'high';
     lead.nextAction = `${lead.fname || 'Lead'} asked to be called at ${lead.phone || 'their number'}. Call within the hour.`;
@@ -123,12 +124,13 @@ export default async function handler(req, res) {
   }
 
   // Score on first message, then re-score every 2 after that
+  // Skip re-scoring if call intent already handled — score is already HOT
   const buyerMessageCount = lead.messages.filter(m => m.role === 'lead').length;
-  if (buyerMessageCount === 1 || (buyerMessageCount >= 2 && buyerMessageCount % 2 === 0)) {
+  if (!callIntentTriggered && (buyerMessageCount === 1 || (buyerMessageCount >= 2 && buyerMessageCount % 2 === 0))) {
     try {
       const scorePrompt = buildScoringPrompt({ lead });
       const scoreResp = await anthropic.messages.create({
-        model:      'claude-haiku-4-5-20251001', // Haiku is sufficient for structured JSON scoring
+        model:      'claude-haiku-4-5-20251001',
         max_tokens: 500,
         system:     scorePrompt.system,
         messages:   scorePrompt.messages,
@@ -146,7 +148,8 @@ export default async function handler(req, res) {
         console.warn(`[guardrails] invalid score for lead ${leadId} — keeping existing score`);
       }
 
-      // Notify on first message, again if score becomes HOT
+      // Notify on first message or if score upgrades to HOT
+      // Never fire if callIntentTriggered — that already sent a better alert
       if (buyerMessageCount === 1 || scored.score === 'HOT') {
         const agentEmail = agent?.notifyEmail || agent?.email;
         if (agent?.agentNotifyPhone) lead.agentNotifyPhone = agent.agentNotifyPhone;
