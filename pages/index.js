@@ -693,7 +693,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`}`;
       <style jsx global>{GLOBAL_CSS}</style>
 
       {/* NAV */}
-      <nav>
+      <nav className="site-nav">
         <div className="logo">Say <span>HelloLeads</span></div>
         <div className="nav-links">
           <a onClick={() => setView('landing')}>Home</a>
@@ -2196,7 +2196,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`}`;
             <CredField
               label="Your Calendly URL" field="calendlyUrl" placeholder="https://calendly.com/yourname/showing"
               current={creds.calendlyUrl} saving={credsSaving.calendlyUrl} msg={credsMsg.calendlyUrl}
-              onSave={saveCred}
+              onSave={saveCred} mask={false}
             />
             {creds.calendlyUrl?.isSet && (
               <div style={{ marginTop: '.75rem', background: 'var(--sage-light)', borderRadius: '8px', padding: '.75rem 1rem', fontSize: '13px', color: 'var(--sage)' }}>
@@ -2842,31 +2842,44 @@ function IntegCard({ icon, title, badge, status, desc, link, linkLabel, children
 
 // ─── CRED FIELD ───────────────────────────────────────────────────────────────
 
-function CredField({ label, field, placeholder, current, saving, msg, onSave }) {
+function CredField({ label, field, placeholder, current, saving, msg, onSave, mask = true }) {
   const [value, setValue] = useState('');
   const [editing, setEditing] = useState(false);
+  const [showValue, setShowValue] = useState(false);
   return (
     <div style={{ marginBottom: '.85rem' }}>
       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '.3rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</label>
       {current?.isSet && !editing ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
-          <div style={{ flex: 1, padding: '.55rem .85rem', background: 'var(--sage-light)', border: '1px solid var(--sage-mid)', borderRadius: '8px', fontSize: '13px', color: 'var(--sage)', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, padding: '.55rem .85rem', background: 'var(--sage-light)', border: '1px solid var(--sage-mid)', borderRadius: '8px', fontSize: '13px', color: 'var(--sage)', fontFamily: 'monospace', wordBreak: 'break-all' }}>
             {current.masked}
           </div>
           <button onClick={() => setEditing(true)} style={{ fontSize: '12px', color: 'var(--sage)', background: 'none', border: '1px solid var(--sage-mid)', borderRadius: '7px', padding: '.45rem .85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Update</button>
+          <button onClick={() => { if (window.confirm(`Remove ${label}?`)) { onSave(field, ''); } }} style={{ fontSize: '12px', color: '#c0392b', background: 'none', border: '1px solid #f5c6c2', borderRadius: '7px', padding: '.45rem .85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Remove</button>
         </div>
       ) : (
         <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center' }}>
-          <input
-            type="password"
-            value={value}
-            onChange={e => setValue(e.target.value)}
-            placeholder={placeholder}
-            style={{ flex: 1, padding: '.55rem .85rem', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace', outline: 'none' }}
-            onFocus={e => e.target.style.borderColor = 'var(--sage)'}
-            onBlur={e => e.target.style.borderColor = 'var(--border)'}
-            onKeyDown={e => { if (e.key === 'Enter' && value) { onSave(field, value); setValue(''); setEditing(false); } }}
-          />
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input
+              type={mask && !showValue ? 'password' : 'text'}
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              placeholder={placeholder}
+              style={{ width: '100%', padding: '.55rem .85rem', paddingRight: mask ? '2.5rem' : '.85rem', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace', outline: 'none' }}
+              onFocus={e => e.target.style.borderColor = 'var(--sage)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+              onKeyDown={e => { if (e.key === 'Enter' && value) { onSave(field, value); setValue(''); setEditing(false); } }}
+            />
+            {mask && (
+              <button
+                type="button"
+                onClick={() => setShowValue(v => !v)}
+                style={{ position: 'absolute', right: '.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '12px', padding: '2px' }}
+              >
+                {showValue ? '🙈' : '👁'}
+              </button>
+            )}
+          </div>
           <button
             onClick={() => { if (value) { onSave(field, value); setValue(''); setEditing(false); } }}
             disabled={!value || saving}
@@ -2948,7 +2961,7 @@ const GLOBAL_CSS = `
   @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
 
-  nav { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 2.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--white); z-index:100; flex-wrap:wrap; gap:.75rem; }
+  body > nav, .site-nav { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 2.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--white); z-index:100; flex-wrap:wrap; gap:.75rem; }
   .logo { font-family:'Instrument Serif',serif; font-size:1.5rem; letter-spacing:-.01em; }
   .logo span { color:var(--sage); }
   .nav-links { display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap; }
