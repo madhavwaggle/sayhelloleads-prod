@@ -86,6 +86,7 @@ export default async function handler(req, res) {
   const existing = await findLeadByContact(agentId, {
     email: senderEmail || parsed.email,
     phone: parsed.phone,
+    subject,
   });
 
   let lead;
