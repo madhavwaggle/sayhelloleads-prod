@@ -1703,7 +1703,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`}`;
                         <span className="lead-time">{formatTime(lead.createdAt)}</span>
                       </div>
                     </div>
-                  </div>                  </div>
+                  </div>
 
                   {openDetailId === lead.id && (
                     <div className="lead-detail-panel open">
