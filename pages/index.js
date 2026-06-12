@@ -1703,32 +1703,7 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`}`;
                         <span className="lead-time">{formatTime(lead.createdAt)}</span>
                       </div>
                     </div>
-                    {/* SMS quick-action icon — always visible on lead card */}
-                    {lead.phone && (
-                      <div
-                        title={twilioConfigured ? `Text ${lead.fname}` : 'Set up Twilio in Integrations to send SMS'}
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (!twilioConfigured) { setView('integrations'); return; }
-                          const msg = `Hi ${lead.fname}, just following up on ${lead.property || 'your inquiry'}. Are you still interested?`;
-                          const confirmed = window.confirm(`Send this SMS to ${lead.fname} at ${lead.phone}?\n\n"${msg}"\n\nYou can edit this message after clicking OK — this is just a confirmation.`);
-                          if (!confirmed) return;
-                          fetch('/api/send-sms', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ to: lead.phone, message: msg }),
-                          }).then(r => r.ok ? alert(`✅ SMS sent to ${lead.fname}!`) : alert('SMS failed — check Twilio setup.'));
-                        }}
-                        style={{ flexShrink: 0, width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: twilioConfigured ? 'var(--sage-light)' : '#f0f0f0', cursor: twilioConfigured ? 'pointer' : 'default', transition: 'background .15s', border: `1px solid ${twilioConfigured ? 'var(--sage-mid)' : '#ddd'}` }}
-                        onMouseEnter={e => { if (twilioConfigured) e.currentTarget.style.background = '#d4e4d2'; }}
-                        onMouseLeave={e => e.currentTarget.style.background = twilioConfigured ? 'var(--sage-light)' : '#f0f0f0'}
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={twilioConfigured ? '#4a6741' : '#bbb'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                        </svg>
-                      </div>
-                    )}
-                  </div>
+                  </div>                  </div>
 
                   {openDetailId === lead.id && (
                     <div className="lead-detail-panel open">
