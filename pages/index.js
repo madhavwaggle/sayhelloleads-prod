@@ -1464,7 +1464,14 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`}`;
       {view === 'dashboard' && (
         <section className="fade-in">
           <div className="dash-nav">
-            <h2>Agent Dashboard</h2>
+          <h2>
+          {profile?.name?.split(' ')[0] || session?.user?.name?.split(' ')[0] || 'Agent'}’s Dashboard
+          {profile?.agencyName && (
+            <span style={{ fontSize: '14px', color: '#666', marginLeft: '8px' }}>
+              • {profile.agencyName}
+            </span>
+          )}
+          </h2>
             <div className="dash-nav-right">
               <div className="live-badge"><div className="live-dot" /> Live</div>
               <button className="btn-outline" onClick={() => setView('profile')} style={{ fontSize: '13px', padding: '.4rem 1rem' }}>Profile &amp; setup</button>
