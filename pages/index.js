@@ -85,7 +85,6 @@ export default function App() {
   const [manualResult, setManualResult]         = useState(null); // { lead, suggestedOutreach }
   const [pendingOutreachLead, setPendingOutreachLead] = useState(null); // lead card → reopen outreach modal
   const [upgradeInterestLoading, setUpgradeInterestLoading] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
   // Derived — true only when all three Twilio fields are saved
   const twilioConfigured = !!(creds.twilioSid?.isSet && creds.twilioToken?.isSet && creds.twilioPhone?.isSet);
   const chatRef = useRef(null);
@@ -529,11 +528,19 @@ export default function App() {
       ? `\nALREADY COLLECTED (DO NOT ASK AGAIN):\n${knownFacts.map(f => `- ${f}`).join('\n')}`
       : '';
 
+    // Detect if showing has been confirmed — conversation is complete
+    const demoShowingConfirmed = (
+      /\b(see you|sounds good|that works|works for me|confirmed|done deal|perfect|i'll be there|see you then|saturday|sunday|monday|tuesday|wednesday|thursday|friday)\b/i.test(leadAnswers) &&
+      /\b(10am|11am|12pm|1pm|2pm|3pm|4pm|5pm|morning|afternoon|evening|weekend|\d+(am|pm))\b/i.test(leadAnswers + askedQuestions) &&
+      /\b(showing|schedule|book|lock in|appointment|visit|see the|tour)\b/i.test(askedQuestions)
+    );
+
     const conversationSystemPrompt = `You are ${agentDisplayName}, a real estate agent, texting directly with a lead about ${currentLead.property}.
 
 IDENTITY: You are NOT an AI — you ARE the agent. Never refer to yourself as "the agent" or say "our agent will". Never mention AI, bots, or automation. If asked if you're a bot, deflect naturally: "Nope, just me!"
 ${knownBlock}
-CORE RULES:
+${demoShowingConfirmed ? `CONVERSATION COMPLETE:
+A showing has been scheduled and the lead confirmed a time. Send ONE warm closing message — confirm the day/time, say you're looking forward to it, wish them well. Do NOT ask any more questions. The conversation is done.` : `CORE RULES:
 - Sound like a real human texting — warm, natural, conversational
 - 2–3 sentences max per reply
 - ONE question at a time — never ask two things
@@ -555,7 +562,7 @@ PROGRESSION — every reply should do ONE of:
 - Acknowledge what they said + move to the next unknown
 - Move toward a showing or call with ${agentDisplayName}
 
-NEVER: bullet points, formal tone, sign-offs, or mention AI.`;
+NEVER: bullet points, formal tone, sign-offs, or mention AI.`}`;
     try {
       const data = await callAPI('/api/chat', { system: conversationSystemPrompt, messages: newHistory });
       const reply = data.reply;
