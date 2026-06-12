@@ -1563,29 +1563,6 @@ NEVER: bullet points, formal tone, sign-offs, or mention AI.`}`;
               );
             })()}
 
-            {/* SHAREABLE LINK BANNER */}
-            {session && (() => {
-              const slug = session.user?.name
-                ? session.user.name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-')
-                : null;
-              const shareUrl = slug ? `${typeof window !== 'undefined' ? window.location.origin : ''}/agent/${slug}` : null;
-              return shareUrl ? (
-                <div style={{ background: 'var(--sage-light)', border: '1.5px solid var(--sage-mid)', borderRadius: '14px', padding: '1rem 1.25rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.75rem' }}>
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--sage)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '.2rem' }}>Your public inquiry page</div>
-                    <div style={{ fontSize: '14px', color: 'var(--black)', fontFamily: 'monospace' }}>{shareUrl}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '.2rem' }}>Share this link — buyers fill out the form and leads come straight to you.</div>
-                  </div>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(shareUrl); }}
-                    style={{ background: 'var(--sage)', color: '#fff', border: 'none', borderRadius: '8px', padding: '.5rem 1.1rem', fontSize: '13px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  >
-                    Copy link
-                  </button>
-                </div>
-              ) : null;
-            })()}
-
             {/* AI USAGE METER */}
             {(() => {
               const { used, cap } = aiUsage;
